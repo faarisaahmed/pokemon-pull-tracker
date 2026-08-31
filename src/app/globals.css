@@ -1,0 +1,127 @@
+@import "tailwindcss";
+
+/*
+ * Base scale. Tailwind v4 emits these as custom properties and every utility
+ * references them through var(), so a [data-theme] block further down can
+ * repoint them at runtime without recompiling.
+ */
+@theme {
+  --color-ink-950: #08090c;
+  --color-ink-900: #0d0f14;
+  --color-ink-850: #12151c;
+  --color-ink-800: #171b24;
+  --color-ink-700: #232936;
+  --color-ink-600: #333b4d;
+  --color-ink-500: #4a5163;
+  --color-ink-400: #6b7590;
+  --color-ink-300: #98a1b8;
+  --color-ink-200: #c5cbdb;
+  --color-ink-100: #e8ebf2;
+
+  --color-accent: #b06bff;
+  --color-accent-dim: #5b3b8f;
+  --color-accent-soft: #d9b8ff;
+
+  --color-en: #4d9fff;
+  --color-jp: #ff4d6d;
+  --color-good: #35d07f;
+}
+
+/* ------------------------------------------------------------- palettes */
+
+/* Violet with a magenta lift. Cool neutrals underneath. */
+[data-theme="violet"] {
+  --color-accent: #b06bff;
+  --color-accent-dim: #5b3b8f;
+  --color-accent-soft: #d9b8ff;
+  --color-ink-950: #07070d;
+  --color-ink-900: #0d0c16;
+  --color-ink-850: #12111d;
+  --color-ink-800: #1a1828;
+  --color-ink-700: #272338;
+  --color-jp: #ff5d8f;
+}
+
+/* Coral rather than pure red: pure red on dark reads as an error state, and
+   these numbers are prices, not warnings. */
+[data-theme="coral"] {
+  --color-accent: #ff5a63;
+  --color-accent-dim: #8f2028;
+  --color-accent-soft: #ffb3b7;
+  --color-ink-950: #0a0708;
+  --color-ink-900: #120d0f;
+  --color-ink-850: #171114;
+  --color-ink-800: #1f171a;
+  --color-ink-700: #2e2226;
+  --color-en: #5aa9ff;
+  --color-jp: #ff8b4d;
+}
+
+/* Foil tilt: teal primary, violet secondary, near-neutral base. */
+[data-theme="foil"] {
+  --color-accent: #2fe0d0;
+  --color-accent-dim: #0f7a72;
+  --color-accent-soft: #9df3ec;
+  --color-ink-950: #05090b;
+  --color-ink-900: #0a1014;
+  --color-ink-850: #0e151a;
+  --color-ink-800: #141d23;
+  --color-ink-700: #1f2b33;
+  --color-en: #67b8ff;
+  --color-jp: #ff6fa5;
+  /* Teal and the default success green are too close to read apart on the
+     thin EV bars, so success shifts to lime in this palette. */
+  --color-good: #a3e635;
+}
+
+[data-theme="cobalt"] {
+  --color-accent: #4d9fff;
+  --color-accent-dim: #22528f;
+  --color-accent-soft: #b3d6ff;
+  --color-ink-950: #06080d;
+  --color-ink-900: #0b0f17;
+  --color-ink-850: #0f141e;
+  --color-ink-800: #151c28;
+  --color-ink-700: #212a3a;
+  --color-en: #7dd3fc;
+  --color-jp: #ff4d6d;
+}
+
+[data-theme="gold"] {
+  --color-accent: #ffcb05;
+  --color-accent-dim: #b8930a;
+  --color-accent-soft: #ffe680;
+  --color-ink-950: #08090c;
+  --color-ink-900: #0d0f14;
+  --color-ink-850: #12151c;
+  --color-ink-800: #171b24;
+  --color-ink-700: #232936;
+}
+
+/* ----------------------------------------------------------------- base */
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-ink-950);
+  color: var(--color-ink-100);
+  font-feature-settings: "tnum" 1;
+}
+
+/* Numeric columns line up only if the digits are tabular. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: #000;
+}
+
+/* Thin scrollbars keep the dense tables from feeling cramped. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ink-600) transparent;
+}

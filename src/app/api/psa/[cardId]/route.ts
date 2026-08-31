@@ -1,0 +1,88 @@
+import { NextResponse } from "next/server";
+import { getDb } from "@/lib/db";
+import { getCard, getSet, psaFetchStatus, psaPrices } from "@/lib/queries";
+import { BlockedError, fetchPsaPrices, searchUrl } from "@/lib/ebay/psa";
+import { isProxied } from "@/lib/ebay/fetcher";
+
+/** Graded comps move slowly; a week-old scrape is still useful. */
+const TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+export async function GET(_req: Request, ctx: { params: Promise<{ cardId: string }> }) {
+  const { cardId: raw } = await ctx.params;
+  const cardId = decodeURIComponent(raw);
+
+  const card = getCard(cardId);
+  if (!card) return NextResponse.json({ error: "Unknown card" }, { status: 404 });
+  const set = getSet(card.setId);
+  if (!set) return NextResponse.json({ error: "Unknown set" }, { status: 404 });
+
+  const log = psaFetchStatus(cardId);
+  const fresh = log && Date.now() - new Date(log.fetched_at).getTime() < TTL_MS;
+
+  if (fresh) {
+    return NextResponse.json({
+      status: log.status,
+      note: log.note,
+      fetchedAt: log.fetched_at,
+      grades: psaPrices(cardId),
+      searchUrl: searchUrl(card, set),
+      cached: true,
+    });
+  }
+
+  const db = getDb();
+  const now = new Date().toISOString();
+  const writeLog = db.prepare(
+    `INSERT INTO psa_fetch_log (card_id, fetched_at, status, note) VALUES (?, ?, ?, ?)
+     ON CONFLICT(card_id) DO UPDATE SET fetched_at=excluded.fetched_at, status=excluded.status, note=excluded.note`,
+  );
+
+  try {
+    const { summaries, sampled } = await fetchPsaPrices(card, set);
+
+    const replace = db.transaction(() => {
+      db.prepare("DELETE FROM psa_prices WHERE card_id = ?").run(cardId);
+      const ins = db.prepare(
+        `INSERT INTO psa_prices (card_id, grade, sales_count, avg_price, low_price, high_price, last_sale_date, fetched_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      );
+      for (const s of summaries) {
+        ins.run(cardId, s.grade, s.salesCount, s.avgPrice, s.lowPrice, s.highPrice, s.lastSaleDate, now);
+      }
+      writeLog.run(
+        cardId,
+        now,
+        summaries.length ? "ok" : "empty",
+        summaries.length ? null : `No graded sold listings matched (${sampled} listings scanned).`,
+      );
+    });
+    replace();
+
+    return NextResponse.json({
+      status: summaries.length ? "ok" : "empty",
+      fetchedAt: now,
+      grades: psaPrices(cardId),
+      searchUrl: searchUrl(card, set),
+      cached: false,
+    });
+  } catch (err) {
+    const blocked = err instanceof BlockedError;
+    const note = blocked
+      ? isProxied()
+        ? "eBay blocked the request even through the configured proxy."
+        : "eBay blocks automated requests from this host. Set PPT_SCRAPER_URL to route through a proxy service."
+      : String(err instanceof Error ? err.message : err);
+
+    writeLog.run(cardId, now, blocked ? "blocked" : "error", note);
+    return NextResponse.json(
+      {
+        status: blocked ? "blocked" : "error",
+        note,
+        fetchedAt: now,
+        grades: psaPrices(cardId),
+        searchUrl: searchUrl(card, set),
+      },
+      { status: 200 },
+    );
+  }
+}
