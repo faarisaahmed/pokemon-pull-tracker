@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "react-router";
 import { shortDate, usd } from "@/lib/format";
 import { RegionBadge } from "./ui";
 import type { SetRow } from "@/lib/types";
@@ -15,7 +15,7 @@ export function SetTile({ set }: { set: SetRow }) {
 
   return (
     <Link
-      href={`/sets/${encodeURIComponent(set.id)}`}
+      to={`/sets/${encodeURIComponent(set.id)}`}
       className="group flex flex-col rounded-xl border border-ink-800 bg-ink-900 p-3 transition-colors hover:border-ink-600"
     >
       <div className="flex items-start gap-2">
@@ -36,10 +36,8 @@ export function SetTile({ set }: { set: SetRow }) {
       <div className="my-3 flex items-center gap-3">
         <div className="grid h-14 flex-1 place-items-center overflow-hidden">
           {set.logo ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
             <img src={set.logo} alt="" loading="lazy" className="max-h-14 w-auto max-w-full object-contain" />
           ) : set.tileImage ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
             <img
               src={set.tileImage}
               alt=""
@@ -91,7 +89,7 @@ export function SetRowItem({ set }: { set: SetRow }) {
     set.expectedPackValue != null && set.packPrice ? set.expectedPackValue / set.packPrice : null;
   return (
     <Link
-      href={`/sets/${encodeURIComponent(set.id)}`}
+      to={`/sets/${encodeURIComponent(set.id)}`}
       className="group flex items-center gap-3 border-b border-ink-850 px-3 py-2 last:border-0 hover:bg-ink-850"
     >
       <span className="w-12 shrink-0 rounded bg-ink-800 px-1.5 py-0.5 text-center text-[9px] font-bold tracking-wider text-ink-300">

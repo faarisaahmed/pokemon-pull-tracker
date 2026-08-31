@@ -3,32 +3,43 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "react-router dev",
+    "build": "react-router build",
+    "start": "react-router-serve ./build/server/index.js",
     "lint": "eslint",
     "ingest": "tsx scripts/ingest/run.ts",
     "test": "tsx --test tests/*.test.ts",
     "psa:warm": "tsx scripts/psa-warm.ts",
-    "build:full": "npm run ingest && next build"
+    "typecheck": "react-router typegen && tsc --noEmit",
+    "build:full": "npm run ingest && react-router build"
   },
   "dependencies": {
+    "@react-router/node": "^8.3.1",
+    "@react-router/serve": "^8.3.1",
     "better-sqlite3": "^13.0.3",
     "cheerio": "^1.2.0",
-    "next": "16.3.3",
+    "isbot": "^5.2.2",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "react-router": "^8.3.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@react-router/dev": "^8.3.1",
     "@tailwindcss/postcss": "^4",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.3",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.11.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
-    "typescript": "^5"
-  }
+    "typescript": "^5",
+    "typescript-eslint": "^8.69.0",
+    "vite": "^8.2.2"
+  },
+  "type": "module"
 }

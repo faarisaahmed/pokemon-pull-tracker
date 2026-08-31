@@ -13,12 +13,9 @@
 # testing
 /coverage
 
-# next.js
-/.next/
-/out/
-
-# production
+# build output
 /build
+/.react-router
 
 # misc
 .DS_Store
@@ -34,12 +31,8 @@ yarn-error.log*
 .env*
 !.env.example
 
-# vercel
-.vercel
-
 # typescript
 *.tsbuildinfo
-next-env.d.ts
 
 # Local database, rebuilt by `npm run ingest`
 /data/*.db

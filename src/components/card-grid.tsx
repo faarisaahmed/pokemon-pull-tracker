@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "react-router";
 import { RarityChip } from "./ui";
 import { oneIn, usd } from "@/lib/format";
 import { rarityMeta } from "@/lib/rarity";
@@ -39,10 +39,9 @@ export function CardGrid({
       {cards.map((c) => {
         const odds = cardOdds(entry, c.rarityKey, counts);
         return (
-          <Link key={c.id} href={`/cards/${encodeURIComponent(c.id)}`} className="group flex flex-col">
+          <Link key={c.id} to={`/cards/${encodeURIComponent(c.id)}`} className="group flex flex-col">
             <div className="relative overflow-hidden rounded-lg bg-ink-850 shadow-sm ring-1 ring-ink-800 transition-all duration-150 group-hover:-translate-y-0.5 group-hover:ring-ink-600">
               {c.image ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                   src={c.image}
                   alt={c.name}
@@ -111,7 +110,7 @@ export function CardTable({
                 <td className="tnum px-3 py-1.5 text-xs text-ink-500">{c.localId}</td>
                 <td className="px-3 py-1.5">
                   <Link
-                    href={`/cards/${encodeURIComponent(c.id)}`}
+                    to={`/cards/${encodeURIComponent(c.id)}`}
                     className="font-medium transition-colors group-hover:text-accent"
                   >
                     {c.name}
@@ -119,7 +118,7 @@ export function CardTable({
                 </td>
                 {showSet ? (
                   <td className="px-3 py-1.5">
-                    <Link href={`/sets/${encodeURIComponent(c.setId)}`} className="text-xs text-ink-400 hover:text-accent">
+                    <Link to={`/sets/${encodeURIComponent(c.setId)}`} className="text-xs text-ink-400 hover:text-accent">
                       {c.setId}
                     </Link>
                   </td>

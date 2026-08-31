@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseSales, summarise } from "../src/lib/ebay/psa";
+import { parseSales, summarise } from "../src/lib/ebay/psa.server";
 
 /**
  * eBay blocks automated traffic from most hosts, so the parser is verified

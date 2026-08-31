@@ -1,5 +1,5 @@
-import { notFound } from "next/navigation";
-import Link from "next/link";
+import { Link } from "react-router";
+import type { Route } from "./+types/set-detail";
 import { CardGrid, CardTable } from "@/components/card-grid";
 import { DirToggle, Pager, SearchBox, Select, Toggle } from "@/components/controls";
 import { DetailsPanel } from "@/components/details-panel";
@@ -9,17 +9,13 @@ import { entryFor, tierOdds } from "@/lib/pullrates";
 import { rarityMeta } from "@/lib/rarity";
 import { seriesLabel } from "@/lib/series";
 import {
-  CARD_SORTS,
   getSet,
   listCards,
   sealedForSet,
   setRarityBreakdown,
   setRarityCounts,
-  resolveDir,
-  type CardSort,
-} from "@/lib/queries";
-
-export const dynamic = "force-dynamic";
+} from "@/lib/queries.server";
+import { CARD_SORTS, resolveDir, type CardSort } from "@/lib/sorting";
 
 const PAGE_SIZE = 120;
 
@@ -31,17 +27,10 @@ const KIND_LABEL: Record<string, string> = {
   collection: "Collection / tin",
 };
 
-export default async function SetPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ setId: string }>;
-  searchParams: Promise<Record<string, string | undefined>>;
-}) {
-  const { setId } = await params;
-  const sp = await searchParams;
-  const set = getSet(decodeURIComponent(setId));
-  if (!set) notFound();
+export function loader({ params, request }: Route.LoaderArgs) {
+  const sp = Object.fromEntries(new URL(request.url).searchParams) as Record<string, string>;
+  const set = getSet(decodeURIComponent(params.setId));
+  if (!set) throw new Response("Set not found", { status: 404 });
 
   const sort = (sp.sort ?? "number") as CardSort;
   const dir = resolveDir(CARD_SORTS[sort] ?? CARD_SORTS.number, sp.dir);
@@ -63,6 +52,26 @@ export default async function SetPage({
     limit: PAGE_SIZE,
     offset: (page - 1) * PAGE_SIZE,
   });
+  return {
+    set,
+    sort,
+    dir,
+    rarityKey,
+    search,
+    view,
+    page,
+    counts,
+    entry,
+    breakdown,
+    sealed,
+    cards,
+    total,
+  };
+}
+
+export default function SetPage({ loaderData }: Route.ComponentProps) {
+  const { set, sort, dir, rarityKey, search, view, page, counts, entry, breakdown, sealed, cards, total } =
+    loaderData;
   const pageCount = Math.ceil(total / PAGE_SIZE);
   const evRatio =
     set.expectedPackValue != null && set.packPrice ? set.expectedPackValue / set.packPrice : null;
@@ -76,10 +85,8 @@ export default async function SetPage({
       <div className="mb-4 flex flex-wrap items-center gap-4">
         <div className="grid h-16 w-40 shrink-0 place-items-center">
           {set.logo ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
             <img src={set.logo} alt="" className="max-h-16 w-auto max-w-full object-contain" />
           ) : set.tileImage ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
             <img src={set.tileImage} alt="" className="h-16 w-auto rounded object-contain" />
           ) : (
             <span className="text-2xl font-black text-ink-700">{set.abbreviation}</span>
@@ -152,7 +159,7 @@ export default async function SetPage({
                   return (
                     <tr key={b.rarity_key} className="border-b border-ink-850 last:border-0">
                       <td className="px-4 py-1.5">
-                        <Link href={`/sets/${encodeURIComponent(set.id)}?rarity=${b.rarity_key}`}>
+                        <Link to={`/sets/${encodeURIComponent(set.id)}?rarity=${b.rarity_key}`}>
                           <RarityChip
                             rarityKey={b.rarity_key}
                             label={b.rarity ?? rarityMeta(b.rarity_key).label}

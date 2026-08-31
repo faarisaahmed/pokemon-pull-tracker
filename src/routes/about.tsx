@@ -1,13 +1,15 @@
 import { Card } from "@/components/ui";
 import { PULL_RATES, SPECIAL_SET_OVERRIDES } from "@/lib/pullrates";
 import { ConfidenceBadge } from "@/components/ui";
-import { globalStats, lastIngest } from "@/lib/queries";
+import { globalStats, lastIngest } from "@/lib/queries.server";
+import type { Route } from "./+types/about";
 
-export const dynamic = "force-dynamic";
+export function loader() {
+  return { stats: globalStats(), ingested: lastIngest() };
+}
 
-export default function AboutPage() {
-  const stats = globalStats();
-  const ingested = lastIngest();
+export default function AboutPage({ loaderData }: Route.ComponentProps) {
+  const { stats, ingested } = loaderData;
   const entries = [...PULL_RATES, ...SPECIAL_SET_OVERRIDES];
 
   return (

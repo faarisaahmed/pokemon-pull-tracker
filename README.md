@@ -128,7 +128,8 @@ before assuming the scraper is healthy.
 | `npm run ingest -- --region=en` | Ingests one region only. |
 | `npm run psa:warm` | Bulk-fetches PSA comps for the most valuable cards. |
 | `npm test` | Runs the eBay parser tests. |
-| `npm run dev` / `build` / `start` | Next.js. |
+| `npm run typecheck` | Generates route types, then runs `tsc`. |
+| `npm run dev` / `build` / `start` | React Router dev server, production build, production server. |
 
 ## Known gaps
 
@@ -177,10 +178,15 @@ Fly.io, Railway and any VPS work the same way: `npm ci && npm run ingest && npm 
 `npm start` to run. Nothing in the app depends on a particular host — `getDb()` handles a read-only
 filesystem, so serverless platforms work too.
 
-### Telemetry
+## Stack
 
-Next.js reports anonymous usage data to Vercel by default. `next.config.ts` sets
-`NEXT_TELEMETRY_DISABLED=1` so it is off for every clone and every deploy.
+React Router v7 (framework mode) on Vite, React 19, Tailwind v4, SQLite via better-sqlite3.
+No telemetry, and no dependency on any particular host or platform vendor.
+
+Server-only modules are suffixed `.server.ts` — `db.server.ts`, `queries.server.ts`,
+`tcgdex-live.server.ts`, `ebay/*.server.ts`. The build fails if one is reachable from browser code,
+which is deliberate: it keeps SQLite and the scraper out of the client bundle. Anything a component
+needs (`sorting.ts`, `rarity.ts`, `types.ts`, `pullrates/`, `tcgdex.ts`) is a plain shared module.
 
 ### Keeping prices current
 

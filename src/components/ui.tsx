@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "react-router";
 import { rarityMeta } from "@/lib/rarity";
 import type { Confidence, Region } from "@/lib/types";
 
@@ -116,7 +116,7 @@ export function Breadcrumbs({ items }: { items: { href?: string; label: string }
         <span key={i} className="flex items-center gap-1.5">
           {i > 0 ? <span className="text-ink-600">/</span> : null}
           {it.href ? (
-            <Link href={it.href} className="transition-colors hover:text-accent">
+            <Link to={it.href} className="transition-colors hover:text-accent">
               {it.label}
             </Link>
           ) : (

@@ -1,4 +1,4 @@
-import { getDb } from "../../src/lib/db";
+import { getDb } from "../../src/lib/db.server";
 import { hasRarity, rarityKeyOf, rarityMeta } from "../../src/lib/rarity";
 import { cardOdds, entryFor } from "../../src/lib/pullrates";
 import type { Region, SealedKind } from "../../src/lib/types";

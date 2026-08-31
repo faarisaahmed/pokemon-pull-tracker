@@ -1,5 +1,5 @@
 import { energy } from "@/lib/energy";
-import type { CardDetail } from "@/lib/tcgdex-live";
+import type { CardDetail } from "@/lib/tcgdex";
 
 export function EnergyPip({ type, size = 18 }: { type: string; size?: number }) {
   const e = energy(type);

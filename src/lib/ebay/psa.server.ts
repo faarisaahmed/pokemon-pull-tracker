@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 import type { AnyNode } from "domhandler";
-import { BlockedError, fetchHtml, queued } from "./fetcher";
+import { BlockedError, fetchHtml, queued } from "./fetcher.server";
 import type { CardRow, SetRow } from "../types";
 
 export interface Sale {

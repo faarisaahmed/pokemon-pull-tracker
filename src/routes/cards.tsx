@@ -1,19 +1,15 @@
 import { CardTable } from "@/components/card-grid";
+import type { Route } from "./+types/cards";
 import { DirToggle, Pager, SearchBox, Select, Toggle } from "@/components/controls";
 import { RARITIES } from "@/lib/rarity";
-import { CARD_SORTS, listCards, resolveDir, type CardSort } from "@/lib/queries";
+import { listCards } from "@/lib/queries.server";
+import { CARD_SORTS, resolveDir, type CardSort } from "@/lib/sorting";
 import type { Region } from "@/lib/types";
-
-export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 100;
 
-export default async function AllCardsPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | undefined>>;
-}) {
-  const sp = await searchParams;
+export function loader({ request }: Route.LoaderArgs) {
+  const sp = Object.fromEntries(new URL(request.url).searchParams) as Record<string, string>;
   const region = (sp.region ?? "all") as Region | "all";
   const sort = (sp.sort ?? "price") as CardSort;
   const dir = resolveDir(CARD_SORTS[sort] ?? CARD_SORTS.price, sp.dir);
@@ -21,15 +17,27 @@ export default async function AllCardsPage({
   const search = sp.q ?? "";
   const page = Math.max(1, Number(sp.page ?? 1) || 1);
 
-  const { cards, total } = listCards({
+  return {
     region,
     sort,
     dir,
     rarityKey,
     search,
-    limit: PAGE_SIZE,
-    offset: (page - 1) * PAGE_SIZE,
-  });
+    page,
+    ...listCards({
+      region,
+      sort,
+      dir,
+      rarityKey,
+      search,
+      limit: PAGE_SIZE,
+      offset: (page - 1) * PAGE_SIZE,
+    }),
+  };
+}
+
+export default function AllCardsPage({ loaderData }: Route.ComponentProps) {
+  const { region, sort, dir, rarityKey, search, page, cards, total } = loaderData;
 
   return (
     <>

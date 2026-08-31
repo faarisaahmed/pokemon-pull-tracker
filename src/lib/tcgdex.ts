@@ -1,10 +1,7 @@
-import type { Region } from "./types";
-
 /**
- * Full card detail (attacks, HP, weaknesses, regulation mark) is fetched from
- * TCGdex when a card page is opened rather than stored. Ingesting it would mean
- * ~30,000 extra requests for data only ever read one card at a time, and Next's
- * fetch cache makes the repeat cost zero.
+ * Shapes and helpers for TCGdex card detail. Kept separate from the fetch so
+ * components can use the type and the formatter without pulling a server-only
+ * module into the browser bundle.
  */
 export interface CardDetail {
   id: string;
@@ -28,20 +25,6 @@ export interface CardDetail {
   legal?: { standard: boolean; expanded: boolean };
   trainerType?: string;
   energyType?: string;
-}
-
-export async function fetchCardDetail(region: Region, id: string): Promise<CardDetail | null> {
-  try {
-    const res = await fetch(
-      `https://api.tcgdex.net/v2/${region}/cards/${encodeURIComponent(id)}`,
-      { next: { revalidate: 60 * 60 * 24 }, signal: AbortSignal.timeout(8000) },
-    );
-    if (!res.ok) return null;
-    return (await res.json()) as CardDetail;
-  } catch {
-    // The page is still useful without it, so a failure here is not fatal.
-    return null;
-  }
 }
 
 /** "Standard" / "Expanded" / "Unlimited" from TCGdex's legality flags. */

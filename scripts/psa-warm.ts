@@ -6,10 +6,10 @@
  *
  *   npx tsx scripts/psa-warm.ts --limit=200 --min-price=50
  */
-import { getDb } from "../src/lib/db";
-import { getCard, getSet } from "../src/lib/queries";
-import { fetchPsaPrices, BlockedError } from "../src/lib/ebay/psa";
-import { isProxied } from "../src/lib/ebay/fetcher";
+import { getDb } from "../src/lib/db.server";
+import { getCard, getSet } from "../src/lib/queries.server";
+import { fetchPsaPrices, BlockedError } from "../src/lib/ebay/psa.server";
+import { isProxied } from "../src/lib/ebay/fetcher.server";
 
 const arg = (name: string, fallback: number) =>
   Number(process.argv.find((a) => a.startsWith(`--${name}=`))?.split("=")[1] ?? fallback);

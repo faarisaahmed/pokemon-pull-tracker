@@ -1,12 +1,12 @@
-import Link from "next/link";
+import { Link } from "react-router";
+import type { Route } from "./+types/chase";
 import { ChipRow, DirToggle, Select, Toggle } from "@/components/controls";
 import { ConfidenceBadge, RarityChip, RegionBadge } from "@/components/ui";
 import { oneIn, pct, shortDate, usd } from "@/lib/format";
 import { rarityMeta } from "@/lib/rarity";
-import { availableRarities, chaseRows, godPackSets, type ChaseRow } from "@/lib/queries";
+import { availableRarities, chaseRows, godPackSets } from "@/lib/queries.server";
+import type { ChaseRow, GodPackSet } from "@/lib/types";
 import type { Region } from "@/lib/types";
-
-export const dynamic = "force-dynamic";
 
 const CHASE_SORTS = {
   cost: { label: "Cost per hit", key: "costPerHit", defaultDir: "asc" },
@@ -24,12 +24,8 @@ function valueOf(row: ChaseRow, key: string): number | null {
   return (row as unknown as Record<string, number | null>)[key] ?? null;
 }
 
-export default async function ChasePage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | undefined>>;
-}) {
-  const sp = await searchParams;
+export function loader({ request }: Route.LoaderArgs) {
+  const sp = Object.fromEntries(new URL(request.url).searchParams) as Record<string, string>;
   const region = (sp.region ?? "all") as Region | "all";
   const target = sp.rarity ?? "special";
   const sort = (sp.sort ?? "cost") as ChaseSort;
@@ -50,6 +46,12 @@ export default async function ChasePage({
   });
 
   const gods = isGodPacks ? godPackSets(region) : [];
+
+  return { region, target, sort, dir, rarities, isGodPacks, rows, gods };
+}
+
+export default function ChasePage({ loaderData }: Route.ComponentProps) {
+  const { region, target, sort, dir, rarities, isGodPacks, rows, gods } = loaderData;
   const meta = rarityMeta(target);
 
   return (
@@ -138,7 +140,7 @@ export default async function ChasePage({
                     <td className="tnum px-3 py-2 text-xs text-ink-600">{i + 1}</td>
                     <td className="px-3 py-2">
                       <Link
-                        href={`/sets/${encodeURIComponent(r.set.id)}?rarity=${target}`}
+                        to={`/sets/${encodeURIComponent(r.set.id)}?rarity=${target}`}
                         className="flex items-center gap-2"
                       >
                         <RegionBadge region={r.set.region} />
@@ -175,12 +177,11 @@ export default async function ChasePage({
                     <td className="px-3 py-2">
                       {r.topCardId ? (
                         <Link
-                          href={`/cards/${encodeURIComponent(r.topCardId)}`}
+                          to={`/cards/${encodeURIComponent(r.topCardId)}`}
                           className="flex items-center gap-2 hover:text-accent"
                         >
                           {r.topCardImage ? (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img
+                                        <img
                               src={r.topCardImage}
                               alt=""
                               loading="lazy"
@@ -225,7 +226,7 @@ export default async function ChasePage({
   );
 }
 
-function GodPacks({ gods }: { gods: ReturnType<typeof godPackSets> }) {
+function GodPacks({ gods }: { gods: GodPackSet[] }) {
   if (gods.length === 0) {
     return (
       <div className="rounded-xl border border-ink-800 bg-ink-900 px-4 py-16 text-center text-sm text-ink-400">
@@ -243,8 +244,7 @@ function GodPacks({ gods }: { gods: ReturnType<typeof godPackSets> }) {
             <div key={set.id} className="rounded-xl border border-ink-800 bg-ink-900 p-4">
               <div className="flex items-start gap-3">
                 {set.tileImage ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
+                    <img
                     src={set.tileImage}
                     alt=""
                     loading="lazy"
@@ -253,7 +253,7 @@ function GodPacks({ gods }: { gods: ReturnType<typeof godPackSets> }) {
                 ) : null}
                 <div className="min-w-0 flex-1">
                   <Link
-                    href={`/sets/${encodeURIComponent(set.id)}`}
+                    to={`/sets/${encodeURIComponent(set.id)}`}
                     className="block truncate font-semibold hover:text-accent"
                   >
                     {set.name}

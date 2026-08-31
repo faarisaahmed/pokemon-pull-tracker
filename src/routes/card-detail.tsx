@@ -1,28 +1,25 @@
-import { notFound } from "next/navigation";
-import Link from "next/link";
+import { Link } from "react-router";
+import type { Route } from "./+types/card-detail";
 import { Breadcrumbs, Card, ConfidenceBadge, RarityChip, RegionBadge } from "@/components/ui";
 import { AttackList, EnergyPip, Field } from "@/components/card-detail-body";
 import { PsaPanel } from "@/components/psa-panel";
 import { fullDate, oneIn, pct, usd } from "@/lib/format";
 import { rarityMeta } from "@/lib/rarity";
-import { fetchCardDetail, formatLegality } from "@/lib/tcgdex-live";
-import { cardPrices, getCard, getSet, listCards, oddsForCard } from "@/lib/queries";
+import { fetchCardDetail } from "@/lib/tcgdex-live.server";
+import { formatLegality } from "@/lib/tcgdex";
+import { cardPrices, getCard, getSet, listCards, oddsForCard } from "@/lib/queries.server";
 
-export const dynamic = "force-dynamic";
-
-export default async function CardPage({ params }: { params: Promise<{ cardId: string }> }) {
-  const { cardId: raw } = await params;
-  const card = getCard(decodeURIComponent(raw));
-  if (!card) notFound();
+export async function loader({ params }: Route.LoaderArgs) {
+  const card = getCard(decodeURIComponent(params.cardId));
+  if (!card) throw new Response("Card not found", { status: 404 });
   const set = getSet(card.setId);
-  if (!set) notFound();
+  if (!set) throw new Response("Set not found", { status: 404 });
 
   const [detail, prices] = await Promise.all([
     fetchCardDetail(card.region, card.id),
     Promise.resolve(cardPrices(card.id)),
   ]);
   const { entry, odds } = oddsForCard(card, set);
-  const meta = rarityMeta(card.rarityKey);
 
   const siblings = listCards({
     setId: set.id,
@@ -31,6 +28,12 @@ export default async function CardPage({ params }: { params: Promise<{ cardId: s
     limit: 13,
   }).cards.filter((c) => c.id !== card.id);
 
+  return { card, set, detail, prices, entry, odds, siblings };
+}
+
+export default function CardPage({ loaderData }: Route.ComponentProps) {
+  const { card, set, detail, prices, entry, odds, siblings } = loaderData;
+  const meta = rarityMeta(card.rarityKey);
   const costToPull = odds && set.packPrice ? odds.packsPerCopy * set.packPrice : null;
   const primaryType = detail?.types?.[0];
 
@@ -49,7 +52,6 @@ export default async function CardPage({ params }: { params: Promise<{ cardId: s
         <div className="space-y-3">
           <div className="overflow-hidden rounded-xl bg-ink-850 ring-1 ring-ink-800">
             {card.image ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
               <img src={card.image} alt={card.name} className="w-full" />
             ) : (
               <div className="grid aspect-[245/342] place-items-center text-sm text-ink-600">
@@ -64,12 +66,11 @@ export default async function CardPage({ params }: { params: Promise<{ cardId: s
           </div>
 
           <Link
-            href={`/sets/${encodeURIComponent(set.id)}`}
+            to={`/sets/${encodeURIComponent(set.id)}`}
             className="flex items-center gap-2.5 rounded-lg border border-ink-800 bg-ink-900 px-3 py-2 transition-colors hover:border-ink-600"
           >
             <span className="grid h-9 w-16 shrink-0 place-items-center">
               {set.logo ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
                 <img src={set.logo} alt="" className="max-h-9 w-auto max-w-full object-contain" />
               ) : (
                 <span className="text-[11px] font-black text-ink-700">{set.abbreviation}</span>
@@ -165,7 +166,7 @@ export default async function CardPage({ params }: { params: Promise<{ cardId: s
 
                 <Field label="Expansion">
                   <Link
-                    href={`/sets/${encodeURIComponent(set.id)}`}
+                    to={`/sets/${encodeURIComponent(set.id)}`}
                     className="text-en hover:underline"
                   >
                     {set.name}
@@ -195,7 +196,7 @@ export default async function CardPage({ params }: { params: Promise<{ cardId: s
           ) : (
             <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
               <Field label="Expansion">
-                <Link href={`/sets/${encodeURIComponent(set.id)}`} className="text-en hover:underline">
+                <Link to={`/sets/${encodeURIComponent(set.id)}`} className="text-en hover:underline">
                   {set.name}
                 </Link>
               </Field>
@@ -330,11 +331,10 @@ export default async function CardPage({ params }: { params: Promise<{ cardId: s
           </h2>
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
             {siblings.map((s) => (
-              <Link key={s.id} href={`/cards/${encodeURIComponent(s.id)}`} className="group">
+              <Link key={s.id} to={`/cards/${encodeURIComponent(s.id)}`} className="group">
                 <div className="overflow-hidden rounded-lg bg-ink-850 ring-1 ring-ink-800 transition-all group-hover:-translate-y-0.5 group-hover:ring-ink-600">
                   {s.image ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
+                        <img
                       src={s.image}
                       alt={s.name}
                       loading="lazy"

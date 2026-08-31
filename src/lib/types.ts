@@ -155,3 +155,31 @@ export interface ResolvedCardOdds {
   /** Expected copies of this card per sealed booster box. */
   perBox: number;
 }
+
+/** One ranked row on the "what to open" page. */
+export interface ChaseRow {
+  set: SetRow;
+  /** Cards in this set at the target rarity. */
+  poolSize: number;
+  avgPrice: number | null;
+  maxPrice: number | null;
+  topCardId: string | null;
+  topCardName: string | null;
+  topCardImage: string | null;
+  /** Chance a pack contains at least one card of this rarity. */
+  tierPerPack: number;
+  /** Chance a pack contains one *specific* card of this rarity. */
+  perCardPerPack: number;
+  /** Pack price divided by the tier's per-pack odds. */
+  costPerHit: number | null;
+  /** Expected value of the tier per pack, against the pack price. */
+  valueRatio: number | null;
+  confidence: Confidence;
+  scope: "set" | "era";
+  source: PullRateEntry["source"];
+}
+
+export interface GodPackSet {
+  set: SetRow;
+  entry: PullRateEntry;
+}

@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 
 /** Collapsible section, used for the set page's pull-rate and sealed panels. */

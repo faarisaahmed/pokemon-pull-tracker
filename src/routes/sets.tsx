@@ -1,10 +1,10 @@
+import type { Route } from "./+types/sets";
 import { ChipRow, DirToggle, SearchBox, Select, Toggle } from "@/components/controls";
 import { SetRowItem, SetTile } from "@/components/set-tile";
 import { seriesAnchor, seriesLabel } from "@/lib/series";
-import { listSeries, listSets, resolveDir, SET_SORTS, type SetSort } from "@/lib/queries";
+import { listSeries, listSets } from "@/lib/queries.server";
+import { resolveDir, SET_SORTS, type SetSort } from "@/lib/sorting";
 import type { Region, SetRow } from "@/lib/types";
-
-export const dynamic = "force-dynamic";
 
 const PRODUCT_FILTERS = [
   { value: "all", label: "Any product" },
@@ -14,12 +14,8 @@ const PRODUCT_FILTERS = [
   { value: "etb", label: "Has ETB price" },
 ];
 
-export default async function SetsPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | undefined>>;
-}) {
-  const sp = await searchParams;
+export function loader({ request }: Route.LoaderArgs) {
+  const sp = Object.fromEntries(new URL(request.url).searchParams) as Record<string, string>;
   const region = (sp.region ?? "all") as Region | "all";
   const sort = (sp.sort ?? "release") as SetSort;
   const dir = resolveDir(SET_SORTS[sort] ?? SET_SORTS.release, sp.dir);
@@ -28,8 +24,22 @@ export default async function SetsPage({
   const seriesId = sp.series ?? "all";
   const view = sp.view === "list" ? "list" : "grid";
 
-  const sets = listSets({ region, sort, dir, search, hasProduct: product, seriesId });
-  const allSeries = listSeries(region);
+  return {
+    sp,
+    region,
+    sort,
+    dir,
+    search,
+    product: product ?? null,
+    seriesId,
+    view,
+    sets: listSets({ region, sort, dir, search, hasProduct: product, seriesId }),
+    allSeries: listSeries(region),
+  };
+}
+
+export default function SetsPage({ loaderData }: Route.ComponentProps) {
+  const { region, sort, dir, search, product, seriesId, view, sets, allSeries } = loaderData;
 
   // Series sections only make sense while the default chronological sort is
   // active. Any other sort is a cross-series ranking, so it renders flat.

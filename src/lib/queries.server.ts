@@ -1,41 +1,40 @@
-import { getDb } from "./db";
+import { getDb } from "./db.server";
 import { cardOdds, entryFor, tierOdds, PULL_RATES, SPECIAL_SET_OVERRIDES, type SetRarityCounts } from "./pullrates";
 import type {
   CardPriceRow,
   CardRow,
-  Confidence,
+  ChaseRow,
+  GodPackSet,
   PsaPriceRow,
-  PullRateEntry,
   Region,
   SealedRow,
   SetRow,
 } from "./types";
 
+import {
+  CARD_SORTS,
+  SET_SORTS,
+  resolveDir,
+  type CardSort,
+  type SetSort,
+  type SortDir,
+} from "./sorting";
+
+export { CARD_SORTS, SET_SORTS, resolveDir };
+export type { CardSort, SetSort, SortDir };
+
 const ALL_PULL_RATES = [...PULL_RATES, ...SPECIAL_SET_OVERRIDES];
 
 /* ------------------------------------------------------------------ sets */
 
-/**
- * Sort columns are separate from direction so every column gets both
- * directions rather than needing a "…Low" twin for each one.
- */
-export const SET_SORTS = {
-  release: { label: "Release date", column: "release_date", defaultDir: "desc" },
-  name: { label: "Name", column: "name", defaultDir: "asc" },
-  pack: { label: "Pack price", column: "pack_price", defaultDir: "desc" },
-  bundle: { label: "Bundle price", column: "bundle_price", defaultDir: "desc" },
-  box: { label: "Box price", column: "box_price", defaultDir: "desc" },
-  etb: { label: "ETB price", column: "etb_price", defaultDir: "desc" },
-  value: { label: "Total set value", column: "set_value", defaultDir: "desc" },
-  ev: { label: "Expected value per pack", column: "expected_pack_value", defaultDir: "desc" },
-  cards: { label: "Card count", column: "card_count_total", defaultDir: "desc" },
-} as const;
-
-export type SetSort = keyof typeof SET_SORTS;
-export type SortDir = "asc" | "desc";
-
-export function resolveDir(sort: { defaultDir: string }, dir?: string): SortDir {
-  return dir === "asc" || dir === "desc" ? dir : (sort.defaultDir as SortDir);
+export interface SetListOptions {
+  region?: Region | "all";
+  sort?: SetSort;
+  dir?: string;
+  search?: string;
+  /** Only sets that actually have a price for this product type. */
+  hasProduct?: "pack" | "bundle" | "box" | "etb";
+  seriesId?: string;
 }
 
 /** NULLs sort last whichever direction is asked for. */
@@ -130,15 +129,6 @@ export function listSeries(
 }
 
 /* ----------------------------------------------------------------- cards */
-
-export const CARD_SORTS = {
-  number: { label: "Card number", column: "number_sort", defaultDir: "asc" },
-  rarity: { label: "Rarity", column: "rarity_rank", defaultDir: "desc" },
-  price: { label: "Market price", column: "market_price", defaultDir: "desc" },
-  name: { label: "Name", column: "name", defaultDir: "asc" },
-} as const;
-
-export type CardSort = keyof typeof CARD_SORTS;
 
 function rowToCard(r: Record<string, unknown>): CardRow {
   return {
@@ -318,28 +308,6 @@ export function psaFetchStatus(cardId: string) {
 
 /* ----------------------------------------------------------------- chase */
 
-export interface ChaseRow {
-  set: SetRow;
-  /** Cards in this set at the target rarity. */
-  poolSize: number;
-  avgPrice: number | null;
-  maxPrice: number | null;
-  topCardId: string | null;
-  topCardName: string | null;
-  topCardImage: string | null;
-  /** Chance a pack contains at least one card of this rarity. */
-  tierPerPack: number;
-  /** Chance a pack contains one *specific* card of this rarity. */
-  perCardPerPack: number;
-  /** Pack price divided by the tier's per-pack odds. */
-  costPerHit: number | null;
-  /** Expected value of the tier per pack, against the pack price. */
-  valueRatio: number | null;
-  confidence: Confidence;
-  scope: "set" | "era";
-  source: PullRateEntry["source"];
-}
-
 /**
  * Ranks every set that prints a given rarity by how efficiently you can chase
  * it. `costPerHit` is the headline: pack price divided by the odds of the pack
@@ -406,8 +374,8 @@ export function chaseRows(rarityKey: string, region: Region | "all"): ChaseRow[]
 }
 
 /** Every set with a documented god pack, newest first. */
-export function godPackSets(region: Region | "all") {
-  const out: { set: SetRow; entry: PullRateEntry }[] = [];
+export function godPackSets(region: Region | "all"): GodPackSet[] {
+  const out: GodPackSet[] = [];
   for (const entry of ALL_PULL_RATES) {
     if (!entry.godPack || entry.scope !== "set") continue;
     if (region !== "all" && entry.region !== region) continue;

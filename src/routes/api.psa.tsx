@@ -1,26 +1,25 @@
-import { NextResponse } from "next/server";
-import { canWrite, getDb } from "@/lib/db";
-import { getCard, getSet, psaFetchStatus, psaPrices } from "@/lib/queries";
-import { BlockedError, fetchPsaPrices, searchUrl } from "@/lib/ebay/psa";
-import { isProxied } from "@/lib/ebay/fetcher";
+import type { Route } from "./+types/api.psa";
+import { canWrite, getDb } from "@/lib/db.server";
+import { getCard, getSet, psaFetchStatus, psaPrices } from "@/lib/queries.server";
+import { BlockedError, fetchPsaPrices, searchUrl } from "@/lib/ebay/psa.server";
+import { isProxied } from "@/lib/ebay/fetcher.server";
 
 /** Graded comps move slowly; a week-old scrape is still useful. */
 const TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-export async function GET(_req: Request, ctx: { params: Promise<{ cardId: string }> }) {
-  const { cardId: raw } = await ctx.params;
-  const cardId = decodeURIComponent(raw);
+export async function loader({ params }: Route.LoaderArgs) {
+  const cardId = decodeURIComponent(params.cardId);
 
   const card = getCard(cardId);
-  if (!card) return NextResponse.json({ error: "Unknown card" }, { status: 404 });
+  if (!card) return Response.json({ error: "Unknown card" }, { status: 404 });
   const set = getSet(card.setId);
-  if (!set) return NextResponse.json({ error: "Unknown set" }, { status: 404 });
+  if (!set) return Response.json({ error: "Unknown set" }, { status: 404 });
 
   const log = psaFetchStatus(cardId);
   const fresh = log && Date.now() - new Date(log.fetched_at).getTime() < TTL_MS;
 
   if (fresh) {
-    return NextResponse.json({
+    return Response.json({
       status: log.status,
       note: log.note,
       fetchedAt: log.fetched_at,
@@ -61,7 +60,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ cardId: string
     });
     replace();
 
-    return NextResponse.json({
+    return Response.json({
       status: summaries.length ? "ok" : "empty",
       fetchedAt: now,
       // A read-only deployment cannot re-read what it did not store.
@@ -87,7 +86,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ cardId: string
       : String(err instanceof Error ? err.message : err);
 
     if (persist) writeLog.run(cardId, now, blocked ? "blocked" : "error", note);
-    return NextResponse.json(
+    return Response.json(
       {
         status: blocked ? "blocked" : "error",
         note,

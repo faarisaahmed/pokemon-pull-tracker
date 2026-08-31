@@ -1,27 +1,22 @@
-"use client";
-
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useSearchParams } from "react-router";
+import { useCallback, useEffect, useState } from "react";
 
 /** Writes control state into the query string so every view is linkable. */
 function useSetParam() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const params = useSearchParams();
-  const [, startTransition] = useTransition();
+  const [params, setParams] = useSearchParams();
 
   return useCallback(
     (updates: Record<string, string | null>) => {
-      const next = new URLSearchParams(params.toString());
+      const next = new URLSearchParams(params);
       for (const [k, v] of Object.entries(updates)) {
         if (v == null || v === "" || v === "all") next.delete(k);
         else next.set(k, v);
       }
       // Any filter change invalidates the current page.
       if (!("page" in updates)) next.delete("page");
-      startTransition(() => router.replace(`${pathname}?${next.toString()}`, { scroll: false }));
+      setParams(next, { replace: true, preventScrollReset: true });
     },
-    [params, pathname, router],
+    [params, setParams],
   );
 }
 
