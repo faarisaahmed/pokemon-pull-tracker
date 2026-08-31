@@ -1,0 +1,19 @@
+# Render blueprint. Point Render at this repo and it picks this up.
+#
+# The database is not in version control, so it is built during deploy: the
+# ingest pulls fresh prices from TCGdex and TCGCSV, then Next builds against it.
+# That means every deploy ships current prices, and no third-party pricing data
+# ever lands in git.
+services:
+  - type: web
+    name: pull-tracker
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run ingest && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Optional: route eBay requests through a proxy so PSA comps work.
+      # - key: PPT_SCRAPER_URL
+      #   sync: false

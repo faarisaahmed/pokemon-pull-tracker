@@ -108,15 +108,38 @@ CREATE TABLE IF NOT EXISTS meta (
 `;
 
 let _db: Database.Database | null = null;
+let _readonly = false;
 
+/**
+ * Opens the database, degrading to read-only when the filesystem is.
+ *
+ * Serverless hosts mount the deployment read-only, so the write-mode open and
+ * the schema/WAL setup both fail there. Every page in the app is a read, so
+ * that is survivable — only the PSA cache needs writes, and it checks
+ * `canWrite()` before trying.
+ */
 export function getDb(): Database.Database {
   if (_db) return _db;
-  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-  const db = new Database(DB_PATH);
-  db.pragma("journal_mode = WAL");
-  db.exec(SCHEMA);
-  _db = db;
-  return db;
+
+  try {
+    fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+    const db = new Database(DB_PATH);
+    db.pragma("journal_mode = WAL");
+    db.exec(SCHEMA);
+    _db = db;
+    _readonly = false;
+  } catch {
+    const db = new Database(DB_PATH, { readonly: true, fileMustExist: true });
+    _db = db;
+    _readonly = true;
+  }
+  return _db;
+}
+
+/** False on a read-only deployment; the PSA cache is skipped when it is. */
+export function canWrite(): boolean {
+  getDb();
+  return !_readonly;
 }
 
 export function dbPath() {

@@ -155,3 +155,45 @@ Two things to keep in mind if you fork or deploy this:
   dataset, which is not yours to redistribute.
 - **Keep it non-commercial.** No ads, no affiliate links. That is the single biggest factor in
   whether a project like this is left alone.
+
+## Deploying
+
+The database is deliberately not in version control, so any host has to build it. The ingest takes
+about 15 seconds and pulls current prices, which means each deploy ships fresh data and no
+third-party pricing dataset ever lands in git.
+
+**GitHub Pages will not work.** Pages serves static files only — there is no Node process to run the
+SQLite queries behind every page or the `/api/psa` route. A static export would mean prerendering
+~30,000 card pages, moving all sorting and filtering into client-side JavaScript, baking the price
+data into the published repo, and dropping the PSA endpoint entirely.
+
+### Render (simplest)
+
+`render.yaml` is a ready blueprint — create a Blueprint instance from the repo and it deploys. The
+free tier sleeps after 15 minutes idle, so the first request afterwards takes roughly a minute.
+Everything works unchanged because Render runs a normal container with a writable filesystem.
+
+### Vercel
+
+Import the repo and change one setting: **Build Command** to `npm run build:full` (ingest, then
+build). Everything else is detected. The deployment filesystem is read-only, which the app handles —
+`getDb()` falls back to opening read-only and the PSA cache is skipped, so graded prices are fetched
+live per request instead of being cached.
+
+### Keeping prices current
+
+Prices are only as fresh as the last deploy. To refresh daily, add a scheduled GitHub Action that
+calls your host's deploy hook:
+
+```yaml
+# .github/workflows/refresh.yml
+name: Refresh prices
+on:
+  schedule: [{ cron: "0 21 * * *" }]   # TCGCSV updates around 20:00 UTC
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS -X POST "${{ secrets.DEPLOY_HOOK_URL }}"
+```
