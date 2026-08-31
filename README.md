@@ -190,6 +190,80 @@ needs (`sorting.ts`, `rarity.ts`, `types.ts`, `pullrates/`, `tcgdex.ts`) is a pl
 
 ### Keeping prices current
 
+Prices are baked into the database at build time, so they are only as fresh as the last deploy.
+Render auto-deploys on every push to `main`, but if you are not actively pushing code the data goes
+stale.
+
+`.github/workflows/refresh-prices.yml` fixes that: it pings the host's deploy hook daily at 21:00
+UTC (TCGCSV publishes around 20:00), which re-runs the ingest and redeploys. Add the hook URL as a
+repository secret named `RENDER_DEPLOY_HOOK` — including its `?key=` parameter, which is what
+authenticates it. Run it manually from the Actions tab to test.
+
+Each deploy makes roughly 940 requests to TCGdex and TCGCSV. Daily is fine; hourly would not be.
+
+The ingest refuses to finish if it produced implausibly little data — under 250 sets, 27,000 cards
+or 600 sealed products. A total upstream failure already throws, but a partial one could otherwise
+ship a thin database over a good one. Failing the build means the previous deploy keeps serving.
+
+## Known gaps
+
+- **795 Japanese cards have no rarity** (~7% of the Japanese pool), mostly in pre-2010 sets, because
+  neither TCGdex nor TCGplayer records one. They show as "unknown" and get no pull-rate figure.
+- **~18% of Japanese cards have no price** — TCGplayer simply does not list every Japanese single.
+- **8% of Japanese cards have no image** from either source, and 59 mostly pre-2010 Japanese sets
+  therefore have no tile art; those tiles fall back to the set abbreviation.
+- **No Japanese set has logo art** anywhere, so Japanese tiles use the set's most valuable card as
+  their image instead.
+- Pull-rate coverage is strongest for Scarlet & Violet and modern Japanese sets. Older eras fall back
+  to era-wide estimates; the confidence badge tells you which you are looking at.
+- Expected-value-per-pack ignores condition, grading upside and the resale value of the sealed
+  product itself.
+
+## Licence
+
+Code is MIT — see [LICENSE](LICENSE). The card data, prices and images the app displays are **not**
+covered by it and are not mine to license; [NOTICE.md](NOTICE.md) sets out who owns what.
+
+Two things to keep in mind if you fork or deploy this:
+
+- **Never commit `data/*.db`.** It is gitignored, and it contains a full copy of TCGplayer's pricing
+  dataset, which is not yours to redistribute.
+- **Keep it non-commercial.** No ads, no affiliate links. That is the single biggest factor in
+  whether a project like this is left alone.
+
+## Deploying
+
+The database is deliberately not in version control, so any host has to build it. The ingest takes
+about 15 seconds and pulls current prices, which means each deploy ships fresh data and no
+third-party pricing dataset ever lands in git.
+
+**GitHub Pages will not work.** Pages serves static files only — there is no Node process to run the
+SQLite queries behind every page or the `/api/psa` route. A static export would mean prerendering
+~30,000 card pages, moving all sorting and filtering into client-side JavaScript, baking the price
+data into the published repo, and dropping the PSA endpoint entirely.
+
+### Render
+
+`render.yaml` is a ready blueprint — create a Blueprint instance from the repo and it deploys. The
+free tier sleeps after 15 minutes idle, so the first request afterwards takes roughly a minute.
+Everything works unchanged because Render runs a normal container with a writable filesystem.
+
+Fly.io, Railway and any VPS work the same way: `npm ci && npm run ingest && npm run build` to build,
+`npm start` to run. Nothing in the app depends on a particular host — `getDb()` handles a read-only
+filesystem, so serverless platforms work too.
+
+## Stack
+
+React Router v7 (framework mode) on Vite, React 19, Tailwind v4, SQLite via better-sqlite3.
+No telemetry, and no dependency on any particular host or platform vendor.
+
+Server-only modules are suffixed `.server.ts` — `db.server.ts`, `queries.server.ts`,
+`tcgdex-live.server.ts`, `ebay/*.server.ts`. The build fails if one is reachable from browser code,
+which is deliberate: it keeps SQLite and the scraper out of the client bundle. Anything a component
+needs (`sorting.ts`, `rarity.ts`, `types.ts`, `pullrates/`, `tcgdex.ts`) is a plain shared module.
+
+### Keeping prices current
+
 Prices are only as fresh as the last deploy. To refresh daily, add a scheduled GitHub Action that
 calls your host's deploy hook:
 

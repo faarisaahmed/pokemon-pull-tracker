@@ -400,6 +400,34 @@ function computeAggregates() {
 
   db.prepare(`INSERT INTO meta (key, value) VALUES ('last_ingest', ?)
               ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(new Date().toISOString());
+
+  assertPlausible(stats);
+}
+
+/**
+ * Guard for unattended runs. A total upstream failure already throws, but a
+ * partial one — an API returning empty lists, a schema change that silently
+ * matches nothing — would otherwise produce a thin database and get deployed
+ * over a good one. Exiting non-zero here fails the build, and the host keeps
+ * the previous deploy serving.
+ */
+function assertPlausible(stats: Record<string, number>) {
+  const floors: Record<string, number> = {
+    sets: 250,
+    cards: 27_000,
+    priced: 24_000,
+    sealed: 600,
+    sets_with_pack: 150,
+  };
+  const short = Object.entries(floors).filter(([k, min]) => (stats[k] ?? 0) < min);
+  if (short.length === 0) return;
+
+  console.error("\nIngest produced implausibly little data — refusing to continue:");
+  for (const [k, min] of short) {
+    console.error(`  ${k}: got ${stats[k] ?? 0}, expected at least ${min}`);
+  }
+  console.error("\nThis usually means an upstream API changed shape or returned empty.");
+  process.exit(1);
 }
 
 async function main() {

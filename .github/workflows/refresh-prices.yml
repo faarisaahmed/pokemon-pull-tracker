@@ -1,0 +1,37 @@
+# Prices are baked into the database at build time, so they only change when the
+# app is rebuilt. This pings the host's deploy hook once a day to trigger a
+# rebuild, which re-runs the ingest and picks up fresh prices.
+name: Refresh prices
+
+on:
+  schedule:
+    # 21:00 UTC. TCGCSV publishes its daily update around 20:00 UTC.
+    - cron: "0 21 * * *"
+  workflow_dispatch:
+
+# A queued run would only duplicate work the running one is already doing.
+concurrency:
+  group: refresh-prices
+  cancel-in-progress: false
+
+jobs:
+  trigger-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger a rebuild
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::error::RENDER_DEPLOY_HOOK is not set. Add it under" \
+                 "Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+          # Never echo the URL: it carries the ?key= that authenticates it.
+          status=$(curl -sS -o /dev/null -w '%{http_code}' -X POST "$HOOK")
+          echo "Deploy hook responded $status"
+          case "$status" in
+            2*) echo "Rebuild queued. Prices refresh when it finishes." ;;
+            401|403) echo "::error::Hook rejected the request. The URL is probably missing its ?key= parameter."; exit 1 ;;
+            *) echo "::error::Unexpected response $status from the deploy hook."; exit 1 ;;
+          esac
