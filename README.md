@@ -167,18 +167,20 @@ SQLite queries behind every page or the `/api/psa` route. A static export would 
 ~30,000 card pages, moving all sorting and filtering into client-side JavaScript, baking the price
 data into the published repo, and dropping the PSA endpoint entirely.
 
-### Render (simplest)
+### Render
 
 `render.yaml` is a ready blueprint — create a Blueprint instance from the repo and it deploys. The
 free tier sleeps after 15 minutes idle, so the first request afterwards takes roughly a minute.
 Everything works unchanged because Render runs a normal container with a writable filesystem.
 
-### Vercel
+Fly.io, Railway and any VPS work the same way: `npm ci && npm run ingest && npm run build` to build,
+`npm start` to run. Nothing in the app depends on a particular host — `getDb()` handles a read-only
+filesystem, so serverless platforms work too.
 
-Import the repo and change one setting: **Build Command** to `npm run build:full` (ingest, then
-build). Everything else is detected. The deployment filesystem is read-only, which the app handles —
-`getDb()` falls back to opening read-only and the PSA cache is skipped, so graded prices are fetched
-live per request instead of being cached.
+### Telemetry
+
+Next.js reports anonymous usage data to Vercel by default. `next.config.ts` sets
+`NEXT_TELEMETRY_DISABLED=1` so it is off for every clone and every deploy.
 
 ### Keeping prices current
 
