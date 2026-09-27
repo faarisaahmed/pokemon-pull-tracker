@@ -189,8 +189,9 @@ export function ChipRow({
 }
 
 /**
- * Chips where any number can be on at once, stored comma-separated in one
- * param. With none selected the filter is off.
+ * A checklist as chips: any number can be ticked at once, stored
+ * comma-separated in one param. With none ticked the filter is off. Wraps
+ * rather than scrolls so every option stays visible.
  */
 export function MultiChipRow({
   name,
@@ -215,7 +216,7 @@ export function MultiChipRow({
         : "border-ink-700 bg-ink-850 text-ink-300 hover:border-ink-600"
     }`;
   return (
-    <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1.5">
+    <div className="flex flex-wrap gap-1.5 pb-1.5">
       <button onClick={() => set({ [name]: null })} className={chip(values.length === 0)}>
         {allLabel}
       </button>
@@ -226,6 +227,14 @@ export function MultiChipRow({
           aria-pressed={values.includes(o.value)}
           className={chip(values.includes(o.value))}
         >
+          <span
+            aria-hidden
+            className={`mr-1.5 inline-grid h-3 w-3 place-items-center rounded-sm border align-[-1px] text-[9px] leading-none ${
+              values.includes(o.value) ? "border-accent bg-accent text-black" : "border-ink-600"
+            }`}
+          >
+            {values.includes(o.value) ? "✓" : ""}
+          </span>
           {o.label}
           {o.count != null ? <span className="ml-1.5 text-ink-500">{o.count}</span> : null}
         </button>

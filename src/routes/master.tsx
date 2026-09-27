@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import type { Route } from "./+types/master";
-import { SearchBox, Select, Toggle } from "@/components/controls";
+import { MultiChipRow, SearchBox, Select, Toggle } from "@/components/controls";
 import { RarityChip } from "@/components/ui";
 import { shortDate, usd } from "@/lib/format";
 import {
@@ -18,18 +18,6 @@ export const meta: Route.MetaFunction = ({ loaderData }) => [
       ? `${loaderData.species.name} master set — Pull Tracker`
       : "Master set builder — Pull Tracker",
   },
-];
-
-const SINCE_OPTIONS = [
-  { value: "all", label: "Every era" },
-  { value: "2025", label: "2025 on — Mega Evolution" },
-  { value: "2023", label: "2023 on — Scarlet & Violet" },
-  { value: "2020", label: "2020 on — Sword & Shield" },
-  { value: "2017", label: "2017 on — Sun & Moon" },
-  { value: "2014", label: "2014 on — XY" },
-  { value: "2011", label: "2011 on — Black & White" },
-  { value: "2007", label: "2007 on — Diamond & Pearl" },
-  { value: "2003", label: "2003 on — EX" },
 ];
 
 const MAX_PACK_OPTIONS = [
@@ -67,7 +55,7 @@ export function loader({ request }: Route.LoaderArgs) {
   const filters: MasterFilters = {
     region: sp.region === "ja" ? "ja" : "en",
     repeats: sp.repeats === "one" ? "one" : "all",
-    since: positive(sp.since),
+    eras: (sp.era ?? "").split(",").filter(Boolean),
     maxPack: positive(sp.max),
     maxCard: positive(sp.card),
     reverse: sp.reverse !== "skip",
@@ -87,7 +75,7 @@ export function loader({ request }: Route.LoaderArgs) {
     filters: {
       region: filters.region as Region,
       repeats: filters.repeats,
-      since: filters.since == null ? "all" : String(filters.since),
+      eras: filters.eras,
       maxPack: filters.maxPack == null ? "all" : String(filters.maxPack),
       maxCard: filters.maxCard == null ? "all" : String(filters.maxCard),
       reverse: filters.reverse ? "count" : "skip",
@@ -150,11 +138,19 @@ export default function MasterPage({ loaderData }: Route.ComponentProps) {
             />
           </div>
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <Select name="since" label="Released" value={filters.since} options={SINCE_OPTIONS} />
             <Select name="max" label="Pack price" value={filters.maxPack} options={MAX_PACK_OPTIONS} />
             <Select name="card" label="Card price" value={filters.maxCard} options={MAX_CARD_OPTIONS} />
             <Select name="sort" label="Order" value={filters.sort} options={SORTS} />
           </div>
+
+          {result ? (
+            <div className="mb-4">
+              <div className="mb-1 text-[10px] uppercase tracking-wider text-ink-500">
+                Eras <span className="normal-case tracking-normal text-ink-600">— tick any mix</span>
+              </div>
+              <MultiChipRow name="era" values={filters.eras} options={result.eraChoices} allLabel="All eras" />
+            </div>
+          ) : null}
 
           {alternatives.length ? (
             <p className="mb-3 text-xs text-ink-400">
@@ -252,7 +248,7 @@ function Results({
 
       {cards.length === 0 ? (
         <div className="rounded-xl border border-ink-800 bg-ink-900 px-4 py-16 text-center text-sm text-ink-400">
-          No {species} cards are left with these filters — try an earlier era or a higher price cap.
+          No {species} cards are left with these filters — tick another era or raise a price cap.
         </div>
       ) : grouped ? (
         <div className="space-y-6">

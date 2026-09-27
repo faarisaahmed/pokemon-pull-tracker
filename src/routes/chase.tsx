@@ -5,7 +5,7 @@ import { ConfidenceBadge, RarityChip, RegionBadge } from "@/components/ui";
 import { oneIn, pct, shortDate, usd } from "@/lib/format";
 import { boxUnit } from "@/lib/pullrates";
 import { rarityMeta } from "@/lib/rarity";
-import { seriesLabel } from "@/lib/series";
+import { eraOf, eraOptions, eraSlug } from "@/lib/series";
 import { availableRarities, chaseRows, godPackSets } from "@/lib/queries.server";
 import type { ChaseRow, GodPackSet } from "@/lib/types";
 import type { Region, SetRow } from "@/lib/types";
@@ -18,31 +18,6 @@ const MAX_PACK_OPTIONS = [
   { value: "50", label: "Under $50" },
 ];
 
-/** Era key for a set: the series title, so English and Japanese sets share one. */
-function eraOf(set: SetRow): string {
-  return seriesLabel(set.seriesName).title;
-}
-
-function eraSlug(title: string): string {
-  return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}
-
-/**
- * Era chips for whatever sets are on screen, newest era first, each with how
- * many sets it would show.
- */
-function eraOptions(sets: SetRow[]) {
-  const eras = new Map<string, { count: number; newest: string }>();
-  for (const s of sets) {
-    const e = eras.get(eraOf(s)) ?? { count: 0, newest: "" };
-    e.count++;
-    if ((s.releaseDate ?? "") > e.newest) e.newest = s.releaseDate ?? "";
-    eras.set(eraOf(s), e);
-  }
-  return [...eras.entries()]
-    .sort((a, b) => b[1].newest.localeCompare(a[1].newest))
-    .map(([title, e]) => ({ value: eraSlug(title), label: title, count: e.count }));
-}
 
 const CHASE_SORTS = {
   cost: { label: "Cost per hit", key: "costPerHit", defaultDir: "asc" },
@@ -78,7 +53,7 @@ export function loader({ request }: Route.LoaderArgs) {
   // as you pick them), but after the price cap (so counts match what shows).
   const affordable = (set: SetRow) =>
     maxPack == null || (set.packPrice != null && set.packPrice <= maxPack);
-  const inEra = (set: SetRow) => eras.length === 0 || eras.includes(eraSlug(eraOf(set)));
+  const inEra = (set: SetRow) => eras.length === 0 || eras.includes(eraSlug(eraOf(set.seriesName)));
 
   const allRows = isGodPacks ? [] : chaseRows(target, region).filter((r) => affordable(r.set));
   const allGods = isGodPacks ? godPackSets(region).filter((g) => affordable(g.set)) : [];

@@ -1,4 +1,5 @@
 import { getDb } from "./db.server";
+import { eraOf, eraOptions, eraSlug } from "./series";
 import type { Region } from "./types";
 
 /**
@@ -54,8 +55,8 @@ export interface MasterFilters {
   region: Region;
   /** "one" keeps a single print of each straight reprint. */
   repeats: "all" | "one";
-  /** Earliest release year to include, or null for every era. */
-  since: number | null;
+  /** Era slugs to include (see eraSlug); empty means every era. */
+  eras: string[];
   /** Loose-pack price cap in USD; sets with no pack price are left out while set. */
   maxPack: number | null;
   /** Single-card price cap in USD; unpriced cards stay in. */
@@ -98,6 +99,8 @@ export interface MasterResult {
     /** Cards the price/era filters took out, before repeats. */
     filteredOut: number;
   };
+  /** Era checkboxes, counted after the price caps but before the era filter. */
+  eraChoices: { value: string; label: string; count: number }[];
 }
 
 export function masterSet(dexId: number, f: MasterFilters): MasterResult {
@@ -106,7 +109,7 @@ export function masterSet(dexId: number, f: MasterFilters): MasterResult {
       `SELECT c.id, c.local_id, c.name, c.rarity, c.rarity_key, c.image, c.market_price,
               c.print_key, c.number_sort,
               s.id set_id, s.name set_name, s.abbreviation, s.release_date,
-              s.card_count_official, s.pack_price,
+              s.card_count_official, s.pack_price, s.series_name,
               (SELECT market FROM card_prices p
                 WHERE p.card_id = c.id AND p.variant = 'Reverse Holofoil') reverse_price
        FROM cards c JOIN sets s ON s.id = c.set_id
@@ -129,6 +132,7 @@ export function masterSet(dexId: number, f: MasterFilters): MasterResult {
     release_date: string | null;
     card_count_official: number;
     pack_price: number | null;
+    series_name: string | null;
     reverse_price: number | null;
   }[];
 
@@ -140,11 +144,17 @@ export function masterSet(dexId: number, f: MasterFilters): MasterResult {
     printSets.set(r.print_key, s);
   }
 
-  const kept = rows.filter(
+  const affordable = rows.filter(
     (r) =>
-      (f.since == null || (r.release_date ?? "") >= `${f.since}-01-01`) &&
       (f.maxPack == null || (r.pack_price != null && r.pack_price <= f.maxPack)) &&
       (f.maxCard == null || r.market_price == null || r.market_price <= f.maxCard),
+  );
+  // Built before the era filter so ticked eras never vanish from the list.
+  const eraChoices = eraOptions(
+    affordable.map((r) => ({ seriesName: r.series_name, releaseDate: r.release_date })),
+  );
+  const kept = affordable.filter(
+    (r) => f.eras.length === 0 || f.eras.includes(eraSlug(eraOf(r.series_name))),
   );
   const filteredOut = rows.length - kept.length;
 
@@ -231,5 +241,6 @@ export function masterSet(dexId: number, f: MasterFilters): MasterResult {
       hiddenRepeats: hiddenIds.size,
       filteredOut,
     },
+    eraChoices,
   };
 }
