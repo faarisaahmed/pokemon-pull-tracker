@@ -13,6 +13,8 @@
  *                    name normaliser cannot resolve on its own.
  */
 
+import { STANDALONE_SUBSETS } from "../../src/lib/subsets";
+
 /** Digital-only Pokemon TCG Pocket sets: no physical packs, no market price. */
 const POCKET_SET = /^(A\d|B\d|P-A)/;
 /** Trainer kits are fixed 30-card decks, not packs. */
@@ -65,20 +67,15 @@ export const MERGE_INTO: Record<string, string> = {
   "30th-c": "30th",       // Classic Collection -> 30th Celebration
 };
 
-/**
- * Merged subsets that also keep a page of their own. The parent still gets
- * every card (so its pull rates and EV are whole), and the subset is listed
- * separately for browsing. The standalone copy keeps the TCGdex card ids; the
- * copies inside the parent are suffixed `@<parent>` so both can coexist.
- */
-export const ALSO_STANDALONE = new Set(["30th-c"]);
+/** Merged subsets that also keep a page of their own; see src/lib/subsets.ts. */
+export const ALSO_STANDALONE = new Set(Object.keys(STANDALONE_SUBSETS));
 
 /**
  * Subsets whose TCGdex numbering (001-030) has nothing to do with TCGplayer's,
  * which keeps each reprint's original number ("4/102", "149/147"). Their cards
  * are joined to TCGplayer singles by name instead.
  */
-export const JOIN_BY_NAME = new Set(["30th-c"]);
+export const JOIN_BY_NAME = new Set(["30th-c", "cel25cc"]);
 
 /**
  * Cards TCGplayer lists that TCGdex does not have at all, picked out of the
@@ -148,6 +145,15 @@ export const GROUP_ALIASES: Record<string, string[]> = {
   "me02.5": ["ME: Ascended Heroes"],
   "30th": ["ME: 30th Celebration"],
   "30th-c": ["ME: 30th Celebration Classic Collection"],
+  // Standalone subset pages (the parents above already absorb these groups).
+  cel25cc: ["Celebrations: Classic Collection"],
+  sma: ["Hidden Fates: Shiny Vault"],
+  "swsh4.5sv": ["Shining Fates: Shiny Vault"],
+  swsh9tg: ["SWSH09: Brilliant Stars Trainer Gallery"],
+  swsh10tg: ["SWSH10: Astral Radiance Trainer Gallery"],
+  swsh11tg: ["SWSH11: Lost Origin Trainer Gallery"],
+  swsh12tg: ["SWSH12: Silver Tempest Trainer Gallery"],
+  "swsh12.5gg": ["SWSH: Crown Zenith: Galarian Gallery"],
 };
 
 /**

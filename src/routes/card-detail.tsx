@@ -7,6 +7,8 @@ import { fullDate, oneIn, pct, usd } from "@/lib/format";
 import { rarityMeta } from "@/lib/rarity";
 import { fetchCardDetail } from "@/lib/tcgdex-live.server";
 import { formatLegality } from "@/lib/tcgdex";
+import { boxUnit } from "@/lib/pullrates";
+import { dexIdOf, pullSetOf } from "@/lib/subsets";
 import { cardPrices, getCard, getSet, listCards, oddsForCard } from "@/lib/queries.server";
 
 export async function loader({ params }: Route.LoaderArgs) {
@@ -16,8 +18,7 @@ export async function loader({ params }: Route.LoaderArgs) {
   if (!set) throw new Response("Set not found", { status: 404 });
 
   const [detail, prices] = await Promise.all([
-    // A subset card copied into its parent set is stored as "<dex id>@<parent>".
-    fetchCardDetail(card.region, card.id.split("@")[0]),
+    fetchCardDetail(card.region, dexIdOf(card.id)),
     Promise.resolve(cardPrices(card.id)),
   ]);
   const { entry, odds } = oddsForCard(card, set);
@@ -29,14 +30,18 @@ export async function loader({ params }: Route.LoaderArgs) {
     limit: 13,
   }).cards.filter((c) => c.id !== card.id);
 
-  return { card, set, detail, prices, entry, odds, siblings };
+  // A standalone subset has no packs; its cards are pulled from the parent's.
+  const packPrice = getSet(pullSetOf(set.id))?.packPrice ?? null;
+
+  return { card, set, detail, prices, entry, odds, siblings, packPrice };
 }
 
 export default function CardPage({ loaderData }: Route.ComponentProps) {
-  const { card, set, detail, prices, entry, odds, siblings } = loaderData;
+  const { card, set, detail, prices, entry, odds, siblings, packPrice } = loaderData;
   const meta = rarityMeta(card.rarityKey);
-  const costToPull = odds && set.packPrice ? odds.packsPerCopy * set.packPrice : null;
+  const costToPull = odds && packPrice ? odds.packsPerCopy * packPrice : null;
   const primaryType = detail?.types?.[0];
+  const box = boxUnit(entry);
 
   return (
     <>
@@ -216,12 +221,12 @@ export default function CardPage({ loaderData }: Route.ComponentProps) {
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[
               { label: "Pull odds", value: odds ? oneIn(odds.perPack) : "—", sub: odds ? pct(odds.perPack) : "no data" },
-              { label: "Per box", value: odds ? odds.perBox.toFixed(2) : "—", sub: `per ${entry.packsPerBox} packs` },
-              { label: "Boxes / copy", value: odds ? odds.boxesPerCopy.toFixed(1) : "—", sub: "on average" },
+              { label: `Per ${box.short}`, value: odds ? odds.perBox.toFixed(2) : "—", sub: `per ${entry.packsPerBox} packs` },
+              { label: `${box.plural} / copy`, value: odds ? odds.boxesPerCopy.toFixed(1) : "—", sub: "on average" },
               {
                 label: "Cost to pull",
                 value: usd(costToPull, { compact: true }),
-                sub: set.packPrice ? `at ${usd(set.packPrice)}/pack` : "no pack price",
+                sub: packPrice ? `at ${usd(packPrice)}/pack` : "no pack price",
               },
             ].map((s) => (
               <div key={s.label} className="rounded-lg border border-ink-800 bg-ink-900 px-3 py-2">
@@ -291,8 +296,8 @@ export default function CardPage({ loaderData }: Route.ComponentProps) {
                     packs. <strong className="text-ink-200">{odds.poolSize}</strong> cards share that
                     rarity here, so the odds of hitting this one are{" "}
                     <strong className="text-accent">{oneIn(odds.perPack)}</strong> packs — about{" "}
-                    <strong className="text-ink-200">{odds.boxesPerCopy.toFixed(1)}</strong> booster
-                    boxes.
+                    <strong className="text-ink-200">{odds.boxesPerCopy.toFixed(1)}</strong>{" "}
+                    {box.longPlural}.
                   </p>
                   <p className="flex flex-wrap items-center gap-2 pt-1">
                     <ConfidenceBadge confidence={odds.confidence} />

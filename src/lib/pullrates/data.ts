@@ -319,6 +319,61 @@ export const PULL_RATES: PullRateEntry[] = [
 ];
 
 /**
+ * English god packs. English sets started printing them with 151, so they are
+ * kept apart from the pull-rate tables: most of these sets otherwise use their
+ * era's odds. No rate is published for any of them; the figures are community
+ * estimates from opening streams.
+ */
+export const GOD_PACKS: { region: "en" | "ja"; key: string; godPack: import("../types").GodPack }[] = [
+  {
+    region: "en",
+    key: "sv03.5", // 151
+    godPack: {
+      perPack: GOD_PACK_RATE,
+      contents: [
+        "Demi-god pack: a starter's full evolution line as the last three cards (Illustration Rares + Special Illustration Rare)",
+      ],
+    },
+  },
+  {
+    region: "en",
+    key: "sv08.5", // Prismatic Evolutions
+    godPack: {
+      perPack: GOD_PACK_RATE,
+      contents: [
+        "God pack: all 9 Eeveelution Special Illustration Rares",
+        "Demi-god pack: 3 random Special Illustration Rares + 7 Poké Ball reverse holos",
+        "Master Ball pack: 3 Eeveelution Master Ball reverse holos + 7 Poké Ball reverse holos",
+      ],
+    },
+  },
+  {
+    region: "en",
+    key: "sv10.5b", // Black Bolt
+    godPack: {
+      perPack: 1 / 850,
+      contents: ["9 Illustration Rares + 1 Special Illustration Rare"],
+    },
+  },
+  {
+    region: "en",
+    key: "sv10.5w", // White Flare
+    godPack: {
+      perPack: 1 / 850,
+      contents: ["9 Illustration Rares + 1 Special Illustration Rare"],
+    },
+  },
+  {
+    region: "en",
+    key: "me02.5", // Ascended Heroes
+    godPack: {
+      perPack: 1 / 1400,
+      contents: ["3 Mega Attack Rares + 7 Special Illustration Rares"],
+    },
+  },
+];
+
+/**
  * Sets whose pull structure differs enough from their era that the era
  * fallback would be misleading. These are the "special" sets: every pack has a
  * guaranteed hit, so the tier odds are far higher than a main expansion.
@@ -414,7 +469,9 @@ export const SPECIAL_SET_OVERRIDES: PullRateEntry[] = [
     region: "en",
     key: "30th", // 30th Celebration (Classic Collection and RGB Mews merged in)
     scope: "set",
-    packsPerBox: 36,
+    // No booster box exists; the 6-pack booster bundle is the sealed unit.
+    packsPerBox: 6,
+    box: { short: "bundle", plural: "bundles", long: "booster bundle", longPlural: "booster bundles" },
     cardsPerPack: 5,
     // Slots 1-3 commons, slot 4 the rare (bumped by any hit), slot 5 always
     // one of the 30 Pikachu Rares.

@@ -29,7 +29,9 @@ CREATE TABLE IF NOT EXISTS sets (
   box_price          REAL,
   etb_price          REAL,
   set_value          REAL,
-  expected_pack_value REAL
+  expected_pack_value REAL,
+  -- EV from hit rarities only, leaving out bulk commons/uncommons/rares.
+  hit_pack_value     REAL
 );
 CREATE INDEX IF NOT EXISTS idx_sets_region ON sets(region);
 CREATE INDEX IF NOT EXISTS idx_sets_release ON sets(release_date);
@@ -126,6 +128,7 @@ export function getDb(): Database.Database {
     const db = new Database(DB_PATH);
     db.pragma("journal_mode = WAL");
     db.exec(SCHEMA);
+    migrate(db);
     _db = db;
     _readonly = false;
   } catch {
@@ -134,6 +137,14 @@ export function getDb(): Database.Database {
     _readonly = true;
   }
   return _db;
+}
+
+/** Columns added after a table first shipped; CREATE TABLE IF NOT EXISTS skips them. */
+function migrate(db: Database.Database) {
+  const cols = new Set(
+    (db.prepare("PRAGMA table_info(sets)").all() as { name: string }[]).map((c) => c.name),
+  );
+  if (!cols.has("hit_pack_value")) db.exec("ALTER TABLE sets ADD COLUMN hit_pack_value REAL");
 }
 
 /** False on a read-only deployment; the PSA cache is skipped when it is. */

@@ -175,6 +175,52 @@ export function ChipRow({
   );
 }
 
+/**
+ * Chips where any number can be on at once, stored comma-separated in one
+ * param. With none selected the filter is off.
+ */
+export function MultiChipRow({
+  name,
+  values,
+  options,
+  allLabel,
+}: {
+  name: string;
+  values: string[];
+  options: { value: string; label: string; count?: number }[];
+  allLabel: string;
+}) {
+  const set = useSetParam();
+  const toggle = (v: string) => {
+    const next = values.includes(v) ? values.filter((x) => x !== v) : [...values, v];
+    set({ [name]: next.length ? next.join(",") : null });
+  };
+  const chip = (on: boolean) =>
+    `shrink-0 whitespace-nowrap rounded-full border px-3 py-1 text-xs transition-colors ${
+      on
+        ? "border-accent bg-accent/10 text-accent"
+        : "border-ink-700 bg-ink-850 text-ink-300 hover:border-ink-600"
+    }`;
+  return (
+    <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1.5">
+      <button onClick={() => set({ [name]: null })} className={chip(values.length === 0)}>
+        {allLabel}
+      </button>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          onClick={() => toggle(o.value)}
+          aria-pressed={values.includes(o.value)}
+          className={chip(values.includes(o.value))}
+        >
+          {o.label}
+          {o.count != null ? <span className="ml-1.5 text-ink-500">{o.count}</span> : null}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function Pager({ page, pageCount }: { page: number; pageCount: number }) {
   const set = useSetParam();
   if (pageCount <= 1) return null;

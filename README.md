@@ -19,10 +19,14 @@ to hit a given card.
   and sealed-product panels; then an image-first card grid with number, rarity dot, price and
   per-card odds under each card. Filter by rarity, sort by number / rarity / price, search by name.
 - **What to open** (`/chase`) — pick a rarity and every set that prints it is ranked by **cost per
-  hit**: pack price ÷ the odds of a pack containing that rarity. Also shows the odds, how many cards
-  share the tier, the average and best card value, and what fraction of the pack price that tier
-  returns. A separate God packs view lists the Japanese sets with documented god packs, their
-  estimated rate and their known contents.
+  hit**: pack price ÷ the odds of a pack containing that rarity. Narrow it by era (any number at
+  once, English and Japanese sets share an era) and by a pack-price cap. Also shows the odds, how
+  many cards share the tier, the average and best card value, and what fraction of the pack price
+  that tier returns. A separate God packs view lists the English and Japanese sets with documented
+  god packs, their estimated rate and their known contents.
+- **Subsets** — Trainer Galleries, Shiny Vaults, the Galarian Gallery and both Classic Collections
+  are part of their parent set (so its EV and odds cover the whole pack) and also have a page of
+  their own. See `src/lib/subsets.ts`.
 - **Card page** — full card detail (HP, type, abilities and attacks with energy costs, weakness,
   resistance, retreat, illustrator, Pokédex number, regulation mark, format legality), market price
   per printing, PSA graded sold comps, the odds of pulling that specific card with the arithmetic
@@ -85,10 +89,16 @@ exist because the two markets differ:
 
 Per-card odds are the tier's rate divided by the number of cards sharing that tier in the set.
 
-**God packs** are Japanese-only and have never been acknowledged by The Pokémon Company, so there is
-no measured rate. Community estimates cluster at 1 in 500–1,000 packs for the sets that print them;
-1 in 600 is used for all of them and always labelled as an estimate. Contents come from collector
-reports. Nine sets currently carry god-pack data.
+**God packs** have never been acknowledged by The Pokémon Company, so there is no measured rate.
+Japanese sets have printed them for years; English sets started with 151 (demi-god packs), then
+Prismatic Evolutions, Black Bolt, White Flare and Ascended Heroes (`GOD_PACKS` in
+`src/lib/pullrates/data.ts`). Rates are community estimates — 1 in 600 where nothing better exists —
+and always labelled as such.
+
+**EV per pack** is each tier's per-card odds × its average card price, summed. A tier where most
+cards have no price yet only counts the priced ones, so one sale does not stand in for the rest.
+**Hits EV** is the same from Double Rare up, leaving out bulk. The ingest warns when a modern set
+falls back to vintage pull rates, which usually means a new set id needs an entry.
 Commons, uncommons and the rare slot have no published rate and are modelled from the pack's slot
 structure — those are always labelled *estimated*.
 

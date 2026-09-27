@@ -1,12 +1,48 @@
 import { Link } from "react-router";
 import type { Route } from "./+types/chase";
-import { ChipRow, DirToggle, Select, Toggle } from "@/components/controls";
+import { ChipRow, DirToggle, MultiChipRow, Select, Toggle } from "@/components/controls";
 import { ConfidenceBadge, RarityChip, RegionBadge } from "@/components/ui";
 import { oneIn, pct, shortDate, usd } from "@/lib/format";
+import { boxUnit } from "@/lib/pullrates";
 import { rarityMeta } from "@/lib/rarity";
+import { seriesLabel } from "@/lib/series";
 import { availableRarities, chaseRows, godPackSets } from "@/lib/queries.server";
 import type { ChaseRow, GodPackSet } from "@/lib/types";
-import type { Region } from "@/lib/types";
+import type { Region, SetRow } from "@/lib/types";
+
+const MAX_PACK_OPTIONS = [
+  { value: "all", label: "Any price" },
+  { value: "5", label: "Under $5" },
+  { value: "10", label: "Under $10" },
+  { value: "20", label: "Under $20" },
+  { value: "50", label: "Under $50" },
+];
+
+/** Era key for a set: the series title, so English and Japanese sets share one. */
+function eraOf(set: SetRow): string {
+  return seriesLabel(set.seriesName).title;
+}
+
+function eraSlug(title: string): string {
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+/**
+ * Era chips for whatever sets are on screen, newest era first, each with how
+ * many sets it would show.
+ */
+function eraOptions(sets: SetRow[]) {
+  const eras = new Map<string, { count: number; newest: string }>();
+  for (const s of sets) {
+    const e = eras.get(eraOf(s)) ?? { count: 0, newest: "" };
+    e.count++;
+    if ((s.releaseDate ?? "") > e.newest) e.newest = s.releaseDate ?? "";
+    eras.set(eraOf(s), e);
+  }
+  return [...eras.entries()]
+    .sort((a, b) => b[1].newest.localeCompare(a[1].newest))
+    .map(([title, e]) => ({ value: eraSlug(title), label: title, count: e.count }));
+}
 
 const CHASE_SORTS = {
   cost: { label: "Cost per hit", key: "costPerHit", defaultDir: "asc" },
@@ -32,10 +68,23 @@ export function loader({ request }: Route.LoaderArgs) {
   const sortDef = CHASE_SORTS[sort] ?? CHASE_SORTS.cost;
   const dir = sp.dir === "asc" || sp.dir === "desc" ? sp.dir : sortDef.defaultDir;
 
+  const eras = (sp.era ?? "").split(",").filter(Boolean);
+  const maxPack = Number(sp.max) > 0 ? Number(sp.max) : null;
+
   const rarities = availableRarities(region).filter((r) => r.rank >= 40);
   const isGodPacks = target === "godpack";
 
-  const rows = isGodPacks ? [] : chaseRows(target, region);
+  // Era chips are built before the era filter applies (so they never vanish
+  // as you pick them), but after the price cap (so counts match what shows).
+  const affordable = (set: SetRow) =>
+    maxPack == null || (set.packPrice != null && set.packPrice <= maxPack);
+  const inEra = (set: SetRow) => eras.length === 0 || eras.includes(eraSlug(eraOf(set)));
+
+  const allRows = isGodPacks ? [] : chaseRows(target, region).filter((r) => affordable(r.set));
+  const allGods = isGodPacks ? godPackSets(region).filter((g) => affordable(g.set)) : [];
+  const eraChoices = eraOptions(isGodPacks ? allGods.map((g) => g.set) : allRows.map((r) => r.set));
+
+  const rows = allRows.filter((r) => inEra(r.set));
   rows.sort((a, b) => {
     const av = valueOf(a, sortDef.key);
     const bv = valueOf(b, sortDef.key);
@@ -45,13 +94,27 @@ export function loader({ request }: Route.LoaderArgs) {
     return dir === "asc" ? av - bv : bv - av;
   });
 
-  const gods = isGodPacks ? godPackSets(region) : [];
+  const gods = allGods.filter((g) => inEra(g.set));
 
-  return { region, target, sort, dir, rarities, isGodPacks, rows, gods };
+  return {
+    region,
+    target,
+    sort,
+    dir,
+    rarities,
+    isGodPacks,
+    rows,
+    gods,
+    eras,
+    eraChoices,
+    maxPack: maxPack == null ? "all" : String(maxPack),
+    filtered: eras.length > 0 || maxPack != null,
+  };
 }
 
 export default function ChasePage({ loaderData }: Route.ComponentProps) {
-  const { region, target, sort, dir, rarities, isGodPacks, rows, gods } = loaderData;
+  const { region, target, sort, dir, rarities, isGodPacks, rows, gods, eras, eraChoices, maxPack, filtered } =
+    loaderData;
   const meta = rarityMeta(target);
 
   return (
@@ -59,10 +122,10 @@ export default function ChasePage({ loaderData }: Route.ComponentProps) {
       <div className="mb-4">
         <h1 className="text-2xl font-semibold tracking-tight">What to open</h1>
         <p className="mt-1 max-w-3xl text-sm text-ink-400">
-          Pick the card type you are chasing and this ranks every set that prints it by how much a
-          hit actually costs — the pack price divided by the odds of a pack containing that rarity at
-          all. Nothing here accounts for a specific card; use the per-card odds on a card page for
-          that.
+          Pick the card type you are chasing, narrow it to the eras and pack prices you would
+          actually buy, and this ranks every set by how much a hit costs — the pack price divided by
+          the odds of a pack containing that rarity at all. For one specific card, use the odds on
+          its card page.
         </p>
       </div>
 
@@ -76,6 +139,7 @@ export default function ChasePage({ loaderData }: Route.ComponentProps) {
             { value: "ja", label: "Japan" },
           ]}
         />
+        <Select name="max" label="Pack price" value={maxPack} options={MAX_PACK_OPTIONS} />
         {!isGodPacks ? (
           <>
             <Select
@@ -89,7 +153,8 @@ export default function ChasePage({ loaderData }: Route.ComponentProps) {
         ) : null}
       </div>
 
-      <div className="mb-5">
+      <div className="mb-2">
+        <div className="mb-1 text-[10px] uppercase tracking-wider text-ink-500">Chasing</div>
         <ChipRow
           name="rarity"
           value={target}
@@ -104,11 +169,20 @@ export default function ChasePage({ loaderData }: Route.ComponentProps) {
         />
       </div>
 
+      <div className="mb-5">
+        <div className="mb-1 text-[10px] uppercase tracking-wider text-ink-500">
+          Eras <span className="normal-case tracking-normal text-ink-600">— pick any number</span>
+        </div>
+        <MultiChipRow name="era" values={eras} options={eraChoices} allLabel="All eras" />
+      </div>
+
       {isGodPacks ? (
-        <GodPacks gods={gods} />
+        <GodPacks gods={gods} filtered={filtered} />
       ) : rows.length === 0 ? (
         <div className="rounded-xl border border-ink-800 bg-ink-900 px-4 py-16 text-center text-sm text-ink-400">
-          No set with pull-rate data prints {meta.label} cards in this region.
+          {filtered
+            ? `No set matches these filters for ${meta.label} cards — try another era or a higher pack price.`
+            : `No set with pull-rate data prints ${meta.label} cards in this region.`}
         </div>
       ) : (
         <>
@@ -226,11 +300,13 @@ export default function ChasePage({ loaderData }: Route.ComponentProps) {
   );
 }
 
-function GodPacks({ gods }: { gods: GodPackSet[] }) {
+function GodPacks({ gods, filtered }: { gods: GodPackSet[]; filtered: boolean }) {
   if (gods.length === 0) {
     return (
       <div className="rounded-xl border border-ink-800 bg-ink-900 px-4 py-16 text-center text-sm text-ink-400">
-        No god-pack sets in this region — they are a Japanese-only phenomenon.
+        {filtered
+          ? "No god-pack set matches these filters."
+          : "No god-pack sets are documented in this region yet."}
       </div>
     );
   }
@@ -240,6 +316,7 @@ function GodPacks({ gods }: { gods: GodPackSet[] }) {
         {gods.map(({ set, entry }) => {
           const gp = entry.godPack!;
           const perBox = gp.perPack * entry.packsPerBox;
+          const box = boxUnit(entry);
           return (
             <div key={set.id} className="rounded-xl border border-ink-800 bg-ink-900 p-4">
               <div className="flex items-start gap-3">
@@ -261,7 +338,8 @@ function GodPacks({ gods }: { gods: GodPackSet[] }) {
                   {set.localName ? (
                     <span className="block truncate text-[11px] text-ink-500">{set.localName}</span>
                   ) : null}
-                  <div className="tnum mt-1 flex flex-wrap gap-x-3 text-[11px] text-ink-400">
+                  <div className="tnum mt-1 flex flex-wrap items-center gap-x-3 text-[11px] text-ink-400">
+                    <RegionBadge region={set.region} />
                     <span>{shortDate(set.releaseDate)}</span>
                     <span>{usd(set.packPrice)} / pack</span>
                     <span>{usd(set.boxPrice)} / box</span>
@@ -271,9 +349,9 @@ function GodPacks({ gods }: { gods: GodPackSet[] }) {
 
               <div className="mt-3 grid grid-cols-3 gap-2">
                 <Cell label="Per pack" value={oneIn(gp.perPack)} />
-                <Cell label="Per box" value={`${(perBox * 100).toFixed(1)}%`} />
+                <Cell label={`Per ${box.short}`} value={`${(perBox * 100).toFixed(1)}%`} />
                 <Cell
-                  label="Boxes / god pack"
+                  label={`${box.plural} / god pack`}
                   value={perBox > 0 ? Math.round(1 / perBox).toString() : "—"}
                 />
               </div>
@@ -294,11 +372,13 @@ function GodPacks({ gods }: { gods: GodPackSet[] }) {
       </div>
 
       <p className="mt-4 max-w-3xl text-[11px] leading-relaxed text-ink-500">
-        God packs replace every slot in a booster with hits. The Pokémon Company has never
-        acknowledged they exist, so there is no measured rate — community estimates cluster at 1 in
-        500–1,000 packs for sets that print them, and 1 in 600 is used here for all of them. Treat
-        the percentages as an order of magnitude, not a number to plan around. Contents are compiled
-        from collector reports via{" "}
+        God packs replace every slot in a booster with hits. Japanese sets have printed them for
+        years; English sets started with 151 (as demi-god packs), then Prismatic Evolutions, Black
+        Bolt, White Flare and Ascended Heroes. The Pokémon Company has never published a rate, so
+        every figure is a community estimate — 1 in 600 where nothing better exists, or the range
+        reported from opening streams (about 1 in 700–1,000 for Black Bolt and White Flare, 1 in
+        950–2,000 for Ascended Heroes). Treat the percentages as an order of magnitude, not a number
+        to plan around. Japanese contents are compiled from collector reports via{" "}
         <a
           href="https://www.thetrainercourt.com/blogs/resources/japanese-booster-box-guaranteed-hit-rates-god-packs"
           target="_blank"

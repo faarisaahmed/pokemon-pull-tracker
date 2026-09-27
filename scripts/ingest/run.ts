@@ -1,10 +1,11 @@
 import { getDb } from "../../src/lib/db.server";
-import { hasRarity, rarityKeyOf, rarityMeta } from "../../src/lib/rarity";
+import { hasRarity, isHitRarity, rarityKeyOf, rarityMeta } from "../../src/lib/rarity";
 import { cardOdds, entryFor } from "../../src/lib/pullrates";
 import type { Region, SealedKind } from "../../src/lib/types";
 import { mapLimit, progress } from "./http";
 import * as dex from "./tcgdex";
 import * as csv from "./tcgcsv";
+import { pairByName, productCardName } from "./names";
 import {
   ALSO_STANDALONE,
   GROUP_ALIASES,
@@ -58,7 +59,7 @@ interface IngestCard {
   localId: string;
   name: string;
   image?: string;
-  /** TCGdex id to fetch live detail with, when `id` has been suffixed. */
+  /** TCGdex id, when `id` carries a standalone-copy suffix. */
   dexId?: string;
   /** Groups to join by name instead of collector number (see JOIN_BY_NAME). */
   nameJoinGroups?: csv.CsvGroup[];
@@ -76,15 +77,6 @@ interface MatchedSet {
   groups: csv.CsvGroup[];
 }
 
-/** Loose card-name key: "Gengar (Prime)", "Palkia LV.X" and "Palkia" all match. */
-function nameKey(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/\(.*?\)/g, "")
-    .replace(/\b(lv\.?\s?x|legend|prime)\b/g, "")
-    .replace(/&/g, "and")
-    .replace(/[^a-z0-9]+/g, "");
-}
 
 async function matchSets(region: Region): Promise<{ sets: MatchedSet[]; unmatched: string[] }> {
   const category = csv.CATEGORY[region];
@@ -146,17 +138,14 @@ async function matchSets(region: Region): Promise<{ sets: MatchedSet[]; unmatche
 
   for (const parent of parents) {
     const detail = details.get(parent.id)!;
-    const cards = cardsOf(parent);
+    // The parent owns every card it pulls under the plain ids; a standalone
+    // subset page gets "@<subset>" copies (see src/lib/subsets.ts).
+    const cards = ALSO_STANDALONE.has(parent.id)
+      ? cardsOf(parent).map((c) => ({ ...c, id: `${c.id}@${parent.id}`, dexId: c.id }))
+      : cardsOf(parent);
     for (const child of children) {
       if (MERGE_INTO[child.id] !== parent.id) continue;
-      const childCards = cardsOf(child);
-      // A subset that also stands alone owns the plain ids, so the parent's
-      // copies need their own.
-      cards.push(
-        ...(ALSO_STANDALONE.has(child.id)
-          ? childCards.map((c) => ({ ...c, id: `${c.id}@${parent.id}`, dexId: c.id }))
-          : childCards),
-      );
+      cards.push(...cardsOf(child));
     }
 
     const matched = groupsFor(parent.id, parent.name, detail);
@@ -233,6 +222,7 @@ async function ingestRegion(region: Region) {
     VALUES (@id, @set_id, @region, @local_id, @number_sort, @name, @rarity, @rarity_key,
       @rarity_rank, @category, @illustrator, @image, @types, @hp, @market_price)
     ON CONFLICT(id) DO UPDATE SET
+      set_id=excluded.set_id, local_id=excluded.local_id, number_sort=excluded.number_sort,
       name=excluded.name, rarity=excluded.rarity, rarity_key=excluded.rarity_key,
       rarity_rank=excluded.rarity_rank, image=excluded.image, market_price=excluded.market_price
   `);
@@ -254,6 +244,7 @@ async function ingestRegion(region: Region) {
   `);
 
   const now = new Date().toISOString();
+  const seenCards = new Set<string>();
   let cardCount = 0;
   let pricedCount = 0;
   let sealedCount = 0;
@@ -343,6 +334,7 @@ async function ingestRegion(region: Region) {
           hp: null,
           market_price: market,
         });
+        seenCards.add(c.id);
         cardCount++;
         if (market != null) pricedCount++;
 
@@ -361,7 +353,8 @@ async function ingestRegion(region: Region) {
         }
       }
 
-      for (const g of s.groups) {
+      // Sealed product belongs to the parent, which shares these groups.
+      for (const g of ALSO_STANDALONE.has(s.id) ? [] : s.groups) {
         for (const p of products.get(g.groupId) ?? []) {
           if (csv.isSingle(p)) continue;
           const cls = csv.classifySealed(region, p.name);
@@ -390,6 +383,7 @@ async function ingestRegion(region: Region) {
     }
   });
   run();
+  pruneStaleCards(region, seenCards);
 
   console.log(`  sets: ${sets.length}  cards: ${cardCount}  priced: ${pricedCount} (${Math.round((pricedCount / cardCount) * 100)}%)  sealed: ${sealedCount}`);
   if (missingRarity.length) {
@@ -402,25 +396,39 @@ async function ingestRegion(region: Region) {
 }
 
 /**
- * Pairs name-joined cards with their TCGplayer singles. Duplicate names (the
- * two halves of a LEGEND) are paired in collector-number order on both sides.
+ * Drops cards this run no longer produced (a subset moved, ids changed), so a
+ * reused database does not keep stale rows that inflate set totals. Only runs
+ * when the region clearly ingested, never on a thin run.
  */
+function pruneStaleCards(region: Region, seen: Set<string>) {
+  const db = getDb();
+  if (seen.size < 1000) return;
+  const existing = db.prepare(`SELECT id FROM cards WHERE region = ?`).all(region) as { id: string }[];
+  const stale = existing.map((r) => r.id).filter((id) => !seen.has(id));
+  if (!stale.length) return;
+  const delPrices = db.prepare(`DELETE FROM card_prices WHERE card_id = ?`);
+  const delCard = db.prepare(`DELETE FROM cards WHERE id = ?`);
+  db.transaction(() => {
+    for (const id of stale) {
+      delPrices.run(id);
+      delCard.run(id);
+    }
+  })();
+  console.log(`  removed ${stale.length} stale card(s)`);
+}
+
+/** Pairs name-joined cards with their TCGplayer singles (see names.ts). */
 function resolveNameJoins(s: MatchedSet, products: Map<number, csv.CsvProduct[]>) {
-  const queues = new Map<string, Map<string, csv.CsvProduct[]>>();
+  const byGroups = new Map<string, IngestCard[]>();
   for (const c of s.cards) {
     if (!c.nameJoinGroups) continue;
-    const gkey = c.nameJoinGroups.map((g) => g.groupId).join(",");
-    let byName = queues.get(gkey);
-    if (!byName) {
-      byName = new Map();
-      const singles = c.nameJoinGroups
-        .flatMap((g) => products.get(g.groupId) ?? [])
-        .filter(csv.isSingle)
-        .sort((a, b) => numericPart(csv.cardNumberOf(a) ?? "") - numericPart(csv.cardNumberOf(b) ?? ""));
-      for (const p of singles) push(byName, nameKey(p.name.replace(/\s+-\s+\S+$/, "")), p);
-      queues.set(gkey, byName);
-    }
-    c.productId = byName.get(nameKey(c.name))?.shift()?.productId;
+    push(byGroups, c.nameJoinGroups.map((g) => g.groupId).join(","), c);
+  }
+  for (const cards of byGroups.values()) {
+    const singles = cards[0]
+      .nameJoinGroups!.flatMap((g) => products.get(g.groupId) ?? [])
+      .filter(csv.isSingle);
+    pairByName(cards, singles).forEach((pid, i) => (cards[i].productId = pid));
   }
 }
 
@@ -438,7 +446,7 @@ function addTcgplayerOnlyCards(s: MatchedSet, products: Map<number, csv.CsvProdu
     s.cards.push({
       id: `${s.id}-${localId}`,
       localId,
-      name: p.name.replace(/\s+-\s+\S+$/, ""),
+      name: productCardName(p),
       productId: p.productId,
       // After the numbered cards, in TCGplayer's order.
       numberSort: 10_000 + i,
@@ -466,36 +474,71 @@ function computeAggregates() {
     .prepare(`SELECT id, region, release_date FROM sets`)
     .all() as { id: string; region: Region; release_date: string | null }[];
   const cardsStmt = db.prepare(
-    `SELECT rarity_key, COUNT(*) n, AVG(market_price) avg_price
+    `SELECT rarity_key, COUNT(*) n, COUNT(market_price) priced,
+            AVG(market_price) avg_price, SUM(market_price) sum_price
      FROM cards WHERE set_id = ? AND rarity_key IS NOT NULL GROUP BY rarity_key`,
   );
-  const update = db.prepare(`UPDATE sets SET expected_pack_value = ? WHERE id = ?`);
+  const update = db.prepare(
+    `UPDATE sets SET expected_pack_value = ?, hit_pack_value = ? WHERE id = ?`,
+  );
+  const onVintageFallback: string[] = [];
+  const round = (v: number) => Math.round(v * 100) / 100;
 
   const tx = db.transaction(() => {
     for (const s of setRows) {
       // A standalone subset has no packs of its own; its parent carries the EV.
       if (ALSO_STANDALONE.has(s.id)) {
-        update.run(null, s.id);
+        update.run(null, null, s.id);
         continue;
       }
-      const rows = cardsStmt.all(s.id) as { rarity_key: string; n: number; avg_price: number | null }[];
+      const rows = cardsStmt.all(s.id) as {
+        rarity_key: string;
+        n: number;
+        priced: number;
+        avg_price: number | null;
+        sum_price: number | null;
+      }[];
       const counts = Object.fromEntries(rows.map((r) => [r.rarity_key, r.n]));
       const entry = entryFor(s.region, s.id, s.release_date);
+      // Black & White (Apr 2011) and Japanese Sun & Moon (2017) are the first
+      // eras with their own tables; anything newer on vintage is a miss.
+      const modernFrom = s.region === "en" ? "2011-04-01" : "2017-01-01";
+      if (entry.key.endsWith("-vintage") && (s.release_date ?? "") >= modernFrom) {
+        onVintageFallback.push(`${s.id} (${s.release_date})`);
+      }
       let ev = 0;
+      let hitEv = 0;
       let sawPrice = false;
       for (const r of rows) {
-        if (r.avg_price == null) continue;
+        if (r.avg_price == null || r.sum_price == null) continue;
         const odds = cardOdds(entry, r.rarity_key, counts);
         if (!odds) continue;
         // Expected value contributed by this tier = (cards in tier) x (per-card
-        // odds) x (average price of a card in the tier).
-        ev += r.n * odds.perPack * r.avg_price;
+        // odds) x (average price of a card in the tier). When most of a tier
+        // has no price yet (fresh chase cards like the RGB Mews), the few
+        // priced ones say nothing about the rest, so only they are counted.
+        const tierValue =
+          r.priced * 2 >= r.n ? r.n * r.avg_price : r.sum_price;
+        const value = odds.perPack * tierValue;
+        ev += value;
+        if (isHitRarity(r.rarity_key)) hitEv += value;
         sawPrice = true;
       }
-      update.run(sawPrice ? Math.round(ev * 100) / 100 : null, s.id);
+      update.run(sawPrice ? round(ev) : null, sawPrice ? round(hitEv) : null, s.id);
     }
   });
   tx();
+
+  // A new set whose id misses every era pattern silently gets vintage pull
+  // rates (this is how 30th Celebration's EV ended up at $1.70). Surface it in
+  // the build log instead.
+  if (onVintageFallback.length) {
+    console.warn(
+      `  WARNING: ${onVintageFallback.length} modern set(s) fell back to vintage pull rates — ` +
+        `add an era pattern or set entry in src/lib/pullrates:`,
+    );
+    for (const id of onVintageFallback) console.warn(`    - ${id}`);
+  }
 
   const stats = db
     .prepare(

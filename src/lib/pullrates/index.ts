@@ -1,5 +1,6 @@
-import type { Confidence, PullRateEntry, Region, ResolvedCardOdds } from "../types";
-import { PULL_RATES, SPECIAL_SET_OVERRIDES } from "./data";
+import type { BoxUnit, Confidence, GodPack, PullRateEntry, Region, ResolvedCardOdds } from "../types";
+import { pullSetOf } from "../subsets";
+import { GOD_PACKS, PULL_RATES, SPECIAL_SET_OVERRIDES } from "./data";
 
 const BY_KEY = new Map<string, PullRateEntry>();
 for (const e of [...PULL_RATES, ...SPECIAL_SET_OVERRIDES]) {
@@ -26,20 +27,42 @@ export function eraKeyFor(region: Region, setId: string, releaseDate: string | n
   return "ja-vintage";
 }
 
+const GOD_PACK_BY_KEY = new Map(GOD_PACKS.map((g) => [`${g.region}:${g.key}`, g.godPack]));
+
 /**
- * Subsets listed as their own set but pulled from the parent's packs, so their
- * per-card odds are the parent's.
+ * The pull-rate entry for a set. A standalone subset page resolves to its
+ * parent, whose packs its cards come out of.
  */
-const PULLED_FROM: Record<string, string> = {
-  "30th-c": "30th",
+export function entryFor(region: Region, setId: string, releaseDate: string | null): PullRateEntry {
+  const id = pullSetOf(setId);
+  const entry =
+    BY_KEY.get(`${region}:${id}`) ??
+    BY_KEY.get(`${region}:${eraKeyFor(region, id, releaseDate)}`) ??
+    BY_KEY.get(`${region}:${region === "en" ? "en-vintage" : "ja-vintage"}`)!;
+  const godPack = entry.godPack ?? GOD_PACK_BY_KEY.get(`${region}:${id}`);
+  return godPack && !entry.godPack ? { ...entry, godPack } : entry;
+}
+
+/** Sets with a documented god pack, as [region, set id] pairs. */
+export function godPackSetIds(): { region: Region; key: string; godPack: GodPack }[] {
+  return [
+    ...[...PULL_RATES, ...SPECIAL_SET_OVERRIDES]
+      .filter((e) => e.scope === "set" && e.godPack)
+      .map((e) => ({ region: e.region, key: e.key, godPack: e.godPack! })),
+    ...GOD_PACKS,
+  ];
+}
+
+const BOOSTER_BOX: BoxUnit = {
+  short: "box",
+  plural: "boxes",
+  long: "booster box",
+  longPlural: "booster boxes",
 };
 
-export function entryFor(region: Region, setId: string, releaseDate: string | null): PullRateEntry {
-  return (
-    BY_KEY.get(`${region}:${PULLED_FROM[setId] ?? setId}`) ??
-    BY_KEY.get(`${region}:${eraKeyFor(region, setId, releaseDate)}`) ??
-    BY_KEY.get(`${region}:${region === "en" ? "en-vintage" : "ja-vintage"}`)!
-  );
+/** The sealed unit an entry's "per box" figures refer to. */
+export function boxUnit(entry: PullRateEntry): BoxUnit {
+  return entry.box ?? BOOSTER_BOX;
 }
 
 export interface SetRarityCounts {

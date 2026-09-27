@@ -5,9 +5,10 @@ import { DirToggle, Pager, SearchBox, Select, Toggle } from "@/components/contro
 import { DetailsPanel } from "@/components/details-panel";
 import { Breadcrumbs, ConfidenceBadge, RarityChip, RegionBadge } from "@/components/ui";
 import { fullDate, oneIn, pct, usd } from "@/lib/format";
-import { entryFor, tierOdds } from "@/lib/pullrates";
+import { boxUnit, entryFor, tierOdds } from "@/lib/pullrates";
 import { rarityMeta } from "@/lib/rarity";
 import { seriesLabel } from "@/lib/series";
+import { STANDALONE_SUBSETS } from "@/lib/subsets";
 import {
   getSet,
   listCards,
@@ -43,6 +44,8 @@ export function loader({ params, request }: Route.LoaderArgs) {
   const entry = entryFor(set.region, set.id, set.releaseDate);
   const breakdown = setRarityBreakdown(set.id);
   const sealed = sealedForSet(set.id);
+  const parentId = STANDALONE_SUBSETS[set.id];
+  const parent = parentId ? getSet(parentId) : null;
   const { cards, total } = listCards({
     setId: set.id,
     sort,
@@ -66,12 +69,16 @@ export function loader({ params, request }: Route.LoaderArgs) {
     sealed,
     cards,
     total,
+    parent,
   };
 }
 
 export default function SetPage({ loaderData }: Route.ComponentProps) {
-  const { set, sort, dir, rarityKey, search, view, page, counts, entry, breakdown, sealed, cards, total } =
+  const { set, sort, dir, rarityKey, search, view, page, counts, entry, breakdown, sealed, cards, total, parent } =
     loaderData;
+  const box = boxUnit(entry);
+  const hitRatio =
+    set.hitPackValue != null && set.packPrice ? set.hitPackValue / set.packPrice : null;
   const pageCount = Math.ceil(total / PAGE_SIZE);
   const evRatio =
     set.expectedPackValue != null && set.packPrice ? set.expectedPackValue / set.packPrice : null;
@@ -110,11 +117,20 @@ export default function SetPage({ loaderData }: Route.ComponentProps) {
             <span className="text-ink-700">|</span>
             <span>{series.title} series</span>
           </p>
+          {parent ? (
+            <p className="mt-1 text-xs text-ink-400">
+              A subset pulled from{" "}
+              <Link to={`/sets/${encodeURIComponent(parent.id)}`} className="text-accent underline">
+                {parent.name}
+              </Link>{" "}
+              packs — pack prices, EV and odds live there. The cards are also listed in the full set.
+            </p>
+          ) : null}
         </div>
       </div>
 
       {/* ------------------------------------------------- price highlights */}
-      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
         {[
           { label: "Pack", value: usd(set.packPrice) },
           { label: "Bundle", value: usd(set.bundlePrice) },
@@ -126,7 +142,13 @@ export default function SetPage({ loaderData }: Route.ComponentProps) {
             sub: evRatio != null ? `${evRatio.toFixed(2)}× pack` : undefined,
             good: evRatio != null && evRatio >= 1,
           },
-          { label: "Packs / box", value: String(entry.packsPerBox) },
+          {
+            label: "Hits EV / pack",
+            value: usd(set.hitPackValue),
+            sub: hitRatio != null ? `${hitRatio.toFixed(2)}× pack, no bulk` : "Double Rare and up",
+            good: hitRatio != null && hitRatio >= 1,
+          },
+          { label: `Packs / ${box.short}`, value: String(entry.packsPerBox) },
         ].map((s) => (
           <div key={s.label} className="rounded-lg border border-ink-800 bg-ink-900 px-3 py-2">
             <div className="text-[10px] uppercase tracking-wider text-ink-500">{s.label}</div>

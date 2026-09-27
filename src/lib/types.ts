@@ -26,6 +26,8 @@ export interface SetRow {
   setValue: number | null;
   /** Expected USD of singles per pack opened, from pull rates x card prices. */
   expectedPackValue: number | null;
+  /** The same, counting only hit rarities (Double Rare and up). */
+  hitPackValue: number | null;
 }
 
 export interface CardRow {
@@ -137,6 +139,18 @@ export interface PullRateEntry {
   godPack?: GodPack;
   confidence: Confidence;
   source: { name: string; url: string; sampleSize?: number };
+  /**
+   * The sealed unit "per box" figures are quoted against, for sets sold
+   * without a booster box. Defaults to a booster box.
+   */
+  box?: BoxUnit;
+}
+
+export interface BoxUnit {
+  short: string;
+  plural: string;
+  long: string;
+  longPlural: string;
 }
 
 export interface ResolvedCardOdds {

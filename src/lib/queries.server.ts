@@ -1,5 +1,6 @@
 import { getDb } from "./db.server";
-import { cardOdds, entryFor, tierOdds, PULL_RATES, SPECIAL_SET_OVERRIDES, type SetRarityCounts } from "./pullrates";
+import { cardOdds, entryFor, godPackSetIds, tierOdds, type SetRarityCounts } from "./pullrates";
+import { NOT_SUBSET_COPY, pullSetOf } from "./subsets";
 import type {
   CardPriceRow,
   CardRow,
@@ -22,8 +23,6 @@ import {
 
 export { CARD_SORTS, SET_SORTS, resolveDir };
 export type { CardSort, SetSort, SortDir };
-
-const ALL_PULL_RATES = [...PULL_RATES, ...SPECIAL_SET_OVERRIDES];
 
 /* ------------------------------------------------------------------ sets */
 
@@ -74,6 +73,7 @@ function rowToSet(r: Record<string, unknown>): SetRow {
     etbPrice: (r.etb_price as number) ?? null,
     setValue: (r.set_value as number) ?? null,
     expectedPackValue: (r.expected_pack_value as number) ?? null,
+    hitPackValue: (r.hit_pack_value as number) ?? null,
   };
 }
 
@@ -169,6 +169,8 @@ export function listCards(opts: CardListOptions): { cards: CardRow[]; total: num
   if (opts.setId) {
     where.push("set_id = @setId");
     params.setId = opts.setId;
+  } else {
+    where.push(NOT_SUBSET_COPY);
   }
   if (opts.region && opts.region !== "all") {
     where.push("region = @region");
@@ -220,14 +222,17 @@ export function cardPrices(cardId: string): CardPriceRow[] {
   }));
 }
 
-/** rarityKey -> number of distinct cards in the set. Drives per-card odds. */
+/**
+ * rarityKey -> number of distinct cards in the packs this set's cards come
+ * from. Drives per-card odds, so a standalone subset counts its parent's pool.
+ */
 export function setRarityCounts(setId: string): SetRarityCounts {
   const rows = getDb()
     .prepare(
       `SELECT rarity_key, COUNT(*) n FROM cards
        WHERE set_id = ? AND rarity_key IS NOT NULL GROUP BY rarity_key`,
     )
-    .all(setId) as { rarity_key: string; n: number }[];
+    .all(pullSetOf(setId)) as { rarity_key: string; n: number }[];
   return Object.fromEntries(rows.map((r) => [r.rarity_key, r.n]));
 }
 
@@ -322,7 +327,8 @@ export function chaseRows(rarityKey: string, region: Region | "all"): ChaseRow[]
               ROUND(AVG(c.market_price), 2) avg_price,
               ROUND(MAX(c.market_price), 2) max_price
        FROM cards c
-       WHERE c.rarity_key = @rarityKey ${region !== "all" ? "AND c.region = @region" : ""}
+       WHERE c.rarity_key = @rarityKey AND ${NOT_SUBSET_COPY.replace("id", "c.id")}
+         ${region !== "all" ? "AND c.region = @region" : ""}
        GROUP BY c.set_id`,
     )
     .all({ rarityKey, region }) as {
@@ -376,11 +382,10 @@ export function chaseRows(rarityKey: string, region: Region | "all"): ChaseRow[]
 /** Every set with a documented god pack, newest first. */
 export function godPackSets(region: Region | "all"): GodPackSet[] {
   const out: GodPackSet[] = [];
-  for (const entry of ALL_PULL_RATES) {
-    if (!entry.godPack || entry.scope !== "set") continue;
-    if (region !== "all" && entry.region !== region) continue;
-    const set = getSet(entry.key);
-    if (set) out.push({ set, entry });
+  for (const g of godPackSetIds()) {
+    if (region !== "all" && g.region !== region) continue;
+    const set = getSet(g.key);
+    if (set) out.push({ set, entry: entryFor(set.region, set.id, set.releaseDate) });
   }
   return out.sort((a, b) => (b.set.releaseDate ?? "").localeCompare(a.set.releaseDate ?? ""));
 }
@@ -392,7 +397,7 @@ export function availableRarities(region: Region | "all") {
     .prepare(
       `SELECT rarity_key, COUNT(*) cards, COUNT(DISTINCT set_id) sets, MIN(rarity_rank) rank
        FROM cards
-       WHERE rarity_key IS NOT NULL AND rarity_key NOT IN ('unknown', 'promo')
+       WHERE rarity_key IS NOT NULL AND rarity_key NOT IN ('unknown', 'promo') AND ${NOT_SUBSET_COPY}
          ${region !== "all" ? "AND region = @region" : ""}
        GROUP BY rarity_key ORDER BY rank DESC`,
     )
@@ -413,8 +418,8 @@ export function globalStats() {
     .prepare(
       `SELECT (SELECT COUNT(*) FROM sets WHERE region='en') en_sets,
               (SELECT COUNT(*) FROM sets WHERE region='ja') ja_sets,
-              (SELECT COUNT(*) FROM cards WHERE region='en') en_cards,
-              (SELECT COUNT(*) FROM cards WHERE region='ja') ja_cards`,
+              (SELECT COUNT(*) FROM cards WHERE region='en' AND ${NOT_SUBSET_COPY}) en_cards,
+              (SELECT COUNT(*) FROM cards WHERE region='ja' AND ${NOT_SUBSET_COPY}) ja_cards`,
     )
     .get() as { en_sets: number; ja_sets: number; en_cards: number; ja_cards: number };
 }
