@@ -27,6 +27,8 @@ export interface DexCardDetail {
   image?: string;
   types?: string[];
   hp?: number;
+  attacks?: { name: string }[];
+  abilities?: { name: string }[];
   variants?: Record<string, boolean>;
   variants_detailed?: {
     type: string;
@@ -67,24 +69,74 @@ export function getCard(region: Region, id: string) {
 export async function rarityMap(region: Region): Promise<Map<string, string>> {
   const rarities = await listRarities(region);
   const map = new Map<string, string>();
+  for (const [id, values] of await sweep(region, "rarity", rarities, "rarities")) {
+    map.set(id, values[0]);
+  }
+  return map;
+}
+
+/**
+ * The same trick for the fields the master-set builder needs: Pokedex numbers
+ * (to find every card of a species, "Dark Charizard" and tag teams included),
+ * HP and illustrator (to spot straight reprints). One list query per distinct
+ * value — about 1,400 small requests a region, against ~15,000 for fetching
+ * every card.
+ */
+export interface CardFacts {
+  dexIds: Map<string, number[]>;
+  hp: Map<string, number>;
+  illustrator: Map<string, string>;
+}
+
+export async function cardFacts(region: Region): Promise<CardFacts> {
+  const [dexValues, hpValues, illustrators] = await Promise.all([
+    getJson<number[]>(`${BASE}/${region}/dex-ids`),
+    getJson<number[]>(`${BASE}/${region}/hp`),
+    getJson<string[]>(`${BASE}/${region}/illustrators`),
+  ]);
+  // Tolerant: a value TCGdex chokes on (some illustrator strings carry stray
+  // quotes) costs a few cards their facts, not the whole build.
+  const dex = await sweep(region, "dexId", dexValues.map(String), "pokedex numbers", true);
+  const hp = await sweep(region, "hp", hpValues.map(String), "hp", true);
+  const ill = await sweep(region, "illustrator", illustrators, "illustrators", true);
+  return {
+    dexIds: new Map([...dex].map(([id, v]) => [id, v.map(Number).sort((a, b) => a - b)])),
+    hp: new Map([...hp].map(([id, v]) => [id, Number(v[0])])),
+    illustrator: new Map([...ill].map(([id, v]) => [id, v[0]])),
+  };
+}
+
+/** cardId -> every value of `field` it matched, from one exact-match list query per value. */
+async function sweep(
+  region: Region,
+  field: string,
+  values: string[],
+  label: string,
+  tolerant = false,
+): Promise<Map<string, string[]>> {
+  const map = new Map<string, string[]>();
   let done = 0;
-  await mapLimit(rarities, 6, async (rarity) => {
+  await mapLimit(values, 8, async (value) => {
     for (let page = 1; ; page++) {
       const url =
-        `${BASE}/${region}/cards?rarity=${encodeURIComponent(`eq:${rarity}`)}` +
+        `${BASE}/${region}/cards?${field}=${encodeURIComponent(`eq:${value}`)}` +
         `&pagination:page=${page}&pagination:itemsPerPage=500`;
       let rows: { id: string }[];
       try {
         rows = await getJson<{ id: string }[]>(url);
       } catch (err) {
-        if (err instanceof NotFound) break;
+        if (err instanceof NotFound || tolerant) break;
         throw err;
       }
       if (!rows.length) break;
-      for (const r of rows) map.set(r.id, rarity);
+      for (const r of rows) {
+        const list = map.get(r.id);
+        if (list) list.push(value);
+        else map.set(r.id, [value]);
+      }
       if (rows.length < 500) break;
     }
-    progress(`${region} rarities`, ++done, rarities.length);
+    progress(`${region} ${label}`, ++done, values.length);
   });
   return map;
 }

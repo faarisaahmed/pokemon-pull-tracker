@@ -77,7 +77,18 @@ export function Toggle({
   );
 }
 
-export function SearchBox({ name, placeholder, value }: { name: string; placeholder: string; value: string }) {
+export function SearchBox({
+  name,
+  placeholder,
+  value,
+  list,
+}: {
+  name: string;
+  placeholder: string;
+  value: string;
+  /** id of a <datalist> offering suggestions. */
+  list?: string;
+}) {
   const set = useSetParam();
   const [text, setText] = useState(value);
   const [lastValue, setLastValue] = useState(value);
@@ -102,6 +113,8 @@ export function SearchBox({ name, placeholder, value }: { name: string; placehol
       value={text}
       onChange={(e) => setText(e.target.value)}
       placeholder={placeholder}
+      list={list}
+      aria-label={placeholder}
       className="w-full min-w-0 rounded-md border border-ink-700 bg-ink-850 px-2.5 py-1.5 text-xs text-ink-100 placeholder:text-ink-600 outline-none transition-colors focus:border-accent sm:w-56"
     />
   );

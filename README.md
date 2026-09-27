@@ -24,6 +24,13 @@ to hit a given card.
   many cards share the tier, the average and best card value, and what fraction of the pack price
   that tier returns. A separate God packs view lists the English and Japanese sets with documented
   god packs, their estimated rate and their known contents.
+- **Master sets** (`/master`) — search a Pokémon (name or Pokédex number) and see every card of
+  it in English or Japanese, grouped by set with images and prices, plus totals for the whole
+  master set with or without reverse holos. Trim it with "one of each reprint" (straight reprints
+  like Cynthia's Garchomp ex in Destined Rivals and Ascended Heroes collapse to the cheapest set),
+  a release-era cut-off, a pack-price cap and a card-price cap. Species come from TCGdex Pokédex
+  numbers, so "Charizard" includes Dark Charizard, Mega Charizard X ex and tag teams. Reprints are
+  confirmed by name, HP, illustrator, rarity, attacks and abilities. Nothing is tracked per user.
 - **Subsets** — Trainer Galleries, Shiny Vaults, the Galarian Gallery and both Classic Collections
   are part of their parent set (so its EV and odds cover the whole pack) and also have a page of
   their own. See `src/lib/subsets.ts`.

@@ -168,8 +168,17 @@ async function ingestRegion(region: Region) {
   const category = csv.CATEGORY[region];
   const { sets, unmatched } = await matchSets(region);
 
-  // Pull every card's rarity in one sweep of rarity-filtered list queries.
+  // Pull every card's rarity in one sweep of rarity-filtered list queries, and
+  // the master-set facts (species, HP, illustrator) the same way.
   const rarities = await dex.rarityMap(region);
+  let facts: dex.CardFacts;
+  try {
+    facts = await dex.cardFacts(region);
+  } catch (err) {
+    // The master-set page degrades without these; prices and odds do not.
+    console.warn(`  WARNING: card facts unavailable (${String(err)}); master-set search will be thin.`);
+    facts = { dexIds: new Map(), hp: new Map(), illustrator: new Map() };
+  }
 
   const groupIds = [
     ...new Set(
@@ -218,13 +227,14 @@ async function ingestRegion(region: Region) {
   `);
   const insertCard = db.prepare(`
     INSERT INTO cards (id, set_id, region, local_id, number_sort, name, rarity, rarity_key,
-      rarity_rank, category, illustrator, image, types, hp, market_price)
+      rarity_rank, category, illustrator, image, types, hp, market_price, dex_ids)
     VALUES (@id, @set_id, @region, @local_id, @number_sort, @name, @rarity, @rarity_key,
-      @rarity_rank, @category, @illustrator, @image, @types, @hp, @market_price)
+      @rarity_rank, @category, @illustrator, @image, @types, @hp, @market_price, @dex_ids)
     ON CONFLICT(id) DO UPDATE SET
       set_id=excluded.set_id, local_id=excluded.local_id, number_sort=excluded.number_sort,
       name=excluded.name, rarity=excluded.rarity, rarity_key=excluded.rarity_key,
-      rarity_rank=excluded.rarity_rank, image=excluded.image, market_price=excluded.market_price
+      rarity_rank=excluded.rarity_rank, image=excluded.image, market_price=excluded.market_price,
+      illustrator=excluded.illustrator, hp=excluded.hp, dex_ids=excluded.dex_ids
   `);
   const insertPrice = db.prepare(`
     INSERT INTO card_prices (card_id, variant, tcgplayer_product_id, low, mid, high, market, direct_low, updated_at)
@@ -328,11 +338,14 @@ async function ingestRegion(region: Region) {
           rarity_key: rKey,
           rarity_rank: rarityMeta(rKey).rank,
           category: null,
-          illustrator: null,
+          illustrator: facts.illustrator.get(c.dexId ?? c.id) ?? null,
           image,
           types: null,
-          hp: null,
+          hp: facts.hp.get(c.dexId ?? c.id) ?? null,
           market_price: market,
+          dex_ids: facts.dexIds.has(c.dexId ?? c.id)
+            ? `,${facts.dexIds.get(c.dexId ?? c.id)!.join(",")},`
+            : null,
         });
         seenCards.add(c.id);
         cardCount++;
@@ -384,6 +397,7 @@ async function ingestRegion(region: Region) {
   });
   run();
   pruneStaleCards(region, seenCards);
+  await markReprints(region);
 
   console.log(`  sets: ${sets.length}  cards: ${cardCount}  priced: ${pricedCount} (${Math.round((pricedCount / cardCount) * 100)}%)  sealed: ${sealedCount}`);
   if (missingRarity.length) {
@@ -393,6 +407,75 @@ async function ingestRegion(region: Region) {
     console.log(`  no TCGplayer group matched (${unmatched.length}):`);
     for (const u of unmatched) console.log(`    - ${u}`);
   }
+}
+
+/**
+ * Links straight reprints across sets (e.g. Cynthia's Garchomp ex in Destined
+ * Rivals and Ascended Heroes) so the master-set page can show one of them.
+ *
+ * Name, HP, illustrator and rarity narrow it to a few hundred candidate
+ * groups; those cards alone get a full detail fetch, and attacks plus
+ * abilities settle it — same-name cards by the same artist (every Unown) are
+ * not reprints of each other.
+ */
+async function markReprints(region: Region) {
+  const db = getDb();
+  const candidates = db
+    .prepare(
+      `SELECT c.id, c.name, c.hp, c.illustrator, c.rarity_key FROM cards c
+       JOIN (SELECT name, hp, illustrator, rarity_key FROM cards
+             WHERE region = @region AND instr(id, '@') = 0 AND dex_ids IS NOT NULL
+               AND hp IS NOT NULL AND illustrator IS NOT NULL
+             GROUP BY name, hp, illustrator, rarity_key
+             HAVING COUNT(DISTINCT set_id) > 1) g
+         ON g.name = c.name AND g.hp = c.hp AND g.illustrator = c.illustrator
+            AND g.rarity_key IS c.rarity_key
+       WHERE c.region = @region AND instr(c.id, '@') = 0`,
+    )
+    .all({ region }) as { id: string; name: string; hp: number; illustrator: string; rarity_key: string }[];
+
+  const moves = new Map<string, string>();
+  let done = 0;
+  await mapLimit(candidates, CONCURRENCY, async (c) => {
+    try {
+      const d = await dex.getCard(region, c.id);
+      moves.set(
+        c.id,
+        [
+          ...(d.attacks ?? []).map((a) => `a:${a.name}`),
+          ...(d.abilities ?? []).map((a) => `b:${a.name}`),
+        ].join("|"),
+      );
+    } catch {
+      // Without its moves a card is never linked; a missed reprint beats a
+      // wrong one.
+    }
+    progress(`${region} reprint checks`, ++done, candidates.length);
+  });
+
+  const keyOf = (c: (typeof candidates)[number]) =>
+    moves.has(c.id)
+      ? [c.name, c.hp, c.illustrator, c.rarity_key, moves.get(c.id)].join("~")
+      : null;
+  const keyCount = new Map<string, Set<string>>();
+  for (const c of candidates) {
+    const k = keyOf(c);
+    if (!k) continue;
+    const sets = keyCount.get(k) ?? new Set<string>();
+    sets.add(c.id.slice(0, c.id.lastIndexOf("-")));
+    keyCount.set(k, sets);
+  }
+
+  const setKey = db.prepare(`UPDATE cards SET print_key = ? WHERE id = ? OR id LIKE ? || '@%'`);
+  db.transaction(() => {
+    db.prepare(`UPDATE cards SET print_key = NULL WHERE region = ?`).run(region);
+    for (const c of candidates) {
+      const k = keyOf(c);
+      if (k && keyCount.get(k)!.size > 1) setKey.run(k, c.id, c.id);
+    }
+  })();
+  const linked = [...keyCount.values()].filter((s) => s.size > 1).length;
+  console.log(`  reprints: ${linked} cards printed in more than one set`);
 }
 
 /**
@@ -452,6 +535,41 @@ function addTcgplayerOnlyCards(s: MatchedSet, products: Map<number, csv.CsvProdu
       numberSort: 10_000 + i,
     });
   });
+}
+
+/**
+ * Names each Pokedex number for the master-set search box: the shortest
+ * English card name printed for that species alone ("Charizard" over "Dark
+ * Charizard" or "Charizard ex"). Japanese cards share the numbers, so English
+ * names search them too.
+ */
+function buildSpecies() {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT dex_ids, name, COUNT(*) n FROM cards
+       WHERE region = 'en' AND dex_ids IS NOT NULL AND instr(substr(dex_ids, 2), ',') = length(dex_ids) - 1
+       GROUP BY dex_ids, name`,
+    )
+    .all() as { dex_ids: string; name: string; n: number }[];
+  const best = new Map<number, { name: string; n: number }>();
+  for (const r of rows) {
+    const id = Number(r.dex_ids.slice(1, -1));
+    const cur = best.get(id);
+    if (
+      !cur ||
+      r.name.length < cur.name.length ||
+      (r.name.length === cur.name.length && r.n > cur.n)
+    ) {
+      best.set(id, { name: r.name, n: r.n });
+    }
+  }
+  const insert = db.prepare(`INSERT OR REPLACE INTO species (dex_id, name) VALUES (?, ?)`);
+  db.transaction(() => {
+    db.exec(`DELETE FROM species`);
+    for (const [id, { name }] of best) insert.run(id, name);
+  })();
+  console.log(`  species named: ${best.size}`);
 }
 
 /** Roll card and sealed data up into the per-set columns the index page sorts on. */
@@ -594,6 +712,7 @@ async function main() {
     await ingestRegion(region);
   }
   computeAggregates();
+  buildSpecies();
   console.log(`\nDone in ${Math.round((Date.now() - t0) / 1000)}s -> data/pokemon.db`);
 }
 

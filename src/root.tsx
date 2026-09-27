@@ -17,6 +17,12 @@ export function loader() {
   return { ingested: lastIngest() };
 }
 
+export const links: Route.LinksFunction = () => [
+  { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+  { rel: "icon", href: "/favicon.ico", sizes: "48x48" },
+  { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+];
+
 export const meta: Route.MetaFunction = () => [
   { title: "Pull Tracker — Pokémon TCG prices & pull rates" },
   {
@@ -51,14 +57,15 @@ export default function App({ loaderData }: Route.ComponentProps) {
   return (
     <>
       <header className="sticky top-0 z-30 border-b border-ink-800 bg-ink-950/85 backdrop-blur">
-        <div className="mx-auto flex max-w-[1400px] items-center gap-6 px-4 py-3">
-          <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight">
+        <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-3 sm:gap-6">
+          <Link to="/" className="flex shrink-0 items-center gap-2 font-semibold tracking-tight">
             <span className="grid h-6 w-6 place-items-center rounded-md bg-accent text-[11px] font-black tracking-tighter text-black">
               PT
             </span>
-            <span>Pull Tracker</span>
+            <span className="hidden sm:inline">Pull Tracker</span>
           </Link>
-          <nav className="flex items-center gap-4 text-sm text-ink-300">
+          {/* Scrolls sideways on phones rather than widening the page. */}
+          <nav className="-my-1 flex min-w-0 flex-1 items-center gap-4 overflow-x-auto whitespace-nowrap py-1 text-sm text-ink-300">
             <Link to="/" className="transition-colors hover:text-accent">
               Sets
             </Link>
@@ -68,11 +75,14 @@ export default function App({ loaderData }: Route.ComponentProps) {
             <Link to="/chase" className="transition-colors hover:text-accent">
               What to open
             </Link>
+            <Link to="/master" className="transition-colors hover:text-accent">
+              Master sets
+            </Link>
             <Link to="/about" className="transition-colors hover:text-accent">
               Data &amp; sources
             </Link>
           </nav>
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex shrink-0 items-center gap-3">
             <span className="hidden text-[11px] text-ink-400 sm:block">
               {ingested ? `Prices updated ${new Date(ingested).toLocaleDateString()}` : null}
             </span>

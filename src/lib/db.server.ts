@@ -51,7 +51,12 @@ CREATE TABLE IF NOT EXISTS cards (
   image         TEXT,
   types         TEXT,
   hp            INTEGER,
-  market_price  REAL
+  market_price  REAL,
+  -- National Pokedex numbers as ",6,654," so a species lookup is one instr().
+  dex_ids       TEXT,
+  -- Shared by straight reprints across sets (same name, HP, art, rarity,
+  -- attacks and abilities); null when the card has no reprint.
+  print_key     TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_cards_set ON cards(set_id);
 CREATE INDEX IF NOT EXISTS idx_cards_region ON cards(region);
@@ -103,6 +108,12 @@ CREATE TABLE IF NOT EXISTS psa_fetch_log (
   note       TEXT
 );
 
+-- Pokedex number -> English species name, for the master-set search box.
+CREATE TABLE IF NOT EXISTS species (
+  dex_id INTEGER PRIMARY KEY,
+  name   TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS meta (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -145,6 +156,11 @@ function migrate(db: Database.Database) {
     (db.prepare("PRAGMA table_info(sets)").all() as { name: string }[]).map((c) => c.name),
   );
   if (!cols.has("hit_pack_value")) db.exec("ALTER TABLE sets ADD COLUMN hit_pack_value REAL");
+  const cardCols = new Set(
+    (db.prepare("PRAGMA table_info(cards)").all() as { name: string }[]).map((c) => c.name),
+  );
+  if (!cardCols.has("dex_ids")) db.exec("ALTER TABLE cards ADD COLUMN dex_ids TEXT");
+  if (!cardCols.has("print_key")) db.exec("ALTER TABLE cards ADD COLUMN print_key TEXT");
 }
 
 /** False on a read-only deployment; the PSA cache is skipped when it is. */

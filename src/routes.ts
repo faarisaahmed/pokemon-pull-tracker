@@ -6,6 +6,7 @@ export default [
   route("cards", "routes/cards.tsx"),
   route("cards/:cardId", "routes/card-detail.tsx"),
   route("chase", "routes/chase.tsx"),
+  route("master", "routes/master.tsx"),
   route("about", "routes/about.tsx"),
   route("api/psa/:cardId", "routes/api.psa.tsx"),
 ] satisfies RouteConfig;
