@@ -62,6 +62,30 @@ export const MERGE_INTO: Record<string, string> = {
   swsh12tg: "swsh12",
   "swsh12.5gg": "swsh12.5",
   cel25cc: "cel25",
+  "30th-c": "30th",       // Classic Collection -> 30th Celebration
+};
+
+/**
+ * Merged subsets that also keep a page of their own. The parent still gets
+ * every card (so its pull rates and EV are whole), and the subset is listed
+ * separately for browsing. The standalone copy keeps the TCGdex card ids; the
+ * copies inside the parent are suffixed `@<parent>` so both can coexist.
+ */
+export const ALSO_STANDALONE = new Set(["30th-c"]);
+
+/**
+ * Subsets whose TCGdex numbering (001-030) has nothing to do with TCGplayer's,
+ * which keeps each reprint's original number ("4/102", "149/147"). Their cards
+ * are joined to TCGplayer singles by name instead.
+ */
+export const JOIN_BY_NAME = new Set(["30th-c"]);
+
+/**
+ * Cards TCGplayer lists that TCGdex does not have at all, picked out of the
+ * set's groups by collector number. The RGB Mews are numbered R/G/B "/RGB".
+ */
+export const TCGPLAYER_ONLY_CARDS: Record<string, RegExp> = {
+  "30th": /^[A-Z]+\/RGB$/,
 };
 
 export function isExcludedSet(region: "en" | "ja", id: string, name: string): boolean {
@@ -122,6 +146,8 @@ export const GROUP_ALIASES: Record<string, string[]> = {
   "sv10.5b": ["SV: Black Bolt"],
   "sv10.5w": ["SV: White Flare"],
   "me02.5": ["ME: Ascended Heroes"],
+  "30th": ["ME: 30th Celebration"],
+  "30th-c": ["ME: 30th Celebration Classic Collection"],
 };
 
 /**

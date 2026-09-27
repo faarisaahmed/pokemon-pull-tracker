@@ -6,9 +6,12 @@ import { mapLimit, progress } from "./http";
 import * as dex from "./tcgdex";
 import * as csv from "./tcgcsv";
 import {
+  ALSO_STANDALONE,
   GROUP_ALIASES,
   GROUP_ALIASES_JA,
+  JOIN_BY_NAME,
   MERGE_INTO,
+  TCGPLAYER_ONLY_CARDS,
   isExcludedGroup,
   isExcludedSet,
   normaliseSetName,
@@ -50,13 +53,37 @@ function headlinePrice(rows: csv.CsvPrice[]): number | null {
   return any?.marketPrice ?? null;
 }
 
+interface IngestCard {
+  id: string;
+  localId: string;
+  name: string;
+  image?: string;
+  /** TCGdex id to fetch live detail with, when `id` has been suffixed. */
+  dexId?: string;
+  /** Groups to join by name instead of collector number (see JOIN_BY_NAME). */
+  nameJoinGroups?: csv.CsvGroup[];
+  /** Pre-resolved TCGplayer single, for cards that only exist on TCGplayer. */
+  productId?: number;
+  numberSort?: number;
+}
+
 interface MatchedSet {
   id: string;
   region: Region;
   detail: dex.DexSetDetail;
   /** Includes the parent's own cards plus any merged subset's cards. */
-  cards: { id: string; localId: string; name: string; image?: string }[];
+  cards: IngestCard[];
   groups: csv.CsvGroup[];
+}
+
+/** Loose card-name key: "Gengar (Prime)", "Palkia LV.X" and "Palkia" all match. */
+function nameKey(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\(.*?\)/g, "")
+    .replace(/\b(lv\.?\s?x|legend|prime)\b/g, "")
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "");
 }
 
 async function matchSets(region: Region): Promise<{ sets: MatchedSet[]; unmatched: string[] }> {
@@ -64,7 +91,7 @@ async function matchSets(region: Region): Promise<{ sets: MatchedSet[]; unmatche
   const [briefs, groups] = await Promise.all([dex.listSets(region), csv.listGroups(category)]);
 
   const kept = briefs.filter((s) => !isExcludedSet(region, s.id, s.name));
-  const parents = kept.filter((s) => !(s.id in MERGE_INTO));
+  const parents = kept.filter((s) => !(s.id in MERGE_INTO) || ALSO_STANDALONE.has(s.id));
   const children = kept.filter((s) => s.id in MERGE_INTO);
   console.log(`  ${region}: ${briefs.length} sets -> ${parents.length} kept (+${children.length} merged subsets)`);
 
@@ -87,21 +114,14 @@ async function matchSets(region: Region): Promise<{ sets: MatchedSet[]; unmatche
   const sets: MatchedSet[] = [];
   const unmatched: string[] = [];
 
-  for (const parent of parents) {
-    const detail = details.get(parent.id)!;
-    const cards = [...(detail.cards ?? [])];
-    for (const child of children) {
-      if (MERGE_INTO[child.id] !== parent.id) continue;
-      cards.push(...(details.get(child.id)?.cards ?? []));
-    }
-
+  const groupsFor = (id: string, name: string, detail: dex.DexSetDetail): csv.CsvGroup[] => {
     let matched: csv.CsvGroup[] = [];
-    const alias = (region === "ja" ? GROUP_ALIASES_JA : GROUP_ALIASES)[parent.id];
+    const alias = (region === "ja" ? GROUP_ALIASES_JA : GROUP_ALIASES)[id];
     if (alias) {
       matched = alias.map((n) => byExactName.get(n)).filter((g): g is csv.CsvGroup => !!g);
     }
-    if (!matched.length) matched = byName.get(normaliseSetName(parent.name)) ?? [];
-    if (!matched.length) matched = byAbbr.get(parent.id.toLowerCase()) ?? [];
+    if (!matched.length) matched = byName.get(normaliseSetName(name)) ?? [];
+    if (!matched.length) matched = byAbbr.get(id.toLowerCase()) ?? [];
     if (!matched.length && detail.releaseDate) {
       // Last resort for Japanese sets, whose names are not in English on
       // TCGdex: same release day and same official card count.
@@ -112,7 +132,34 @@ async function matchSets(region: Region): Promise<{ sets: MatchedSet[]; unmatche
       );
       if (matched.length > 1) matched = [];
     }
+    return matched;
+  };
 
+  /** A dex set's cards, flagged for name-joining when its numbering is unusable. */
+  const cardsOf = (s: dex.DexSetBrief): IngestCard[] => {
+    const detail = details.get(s.id);
+    const cards: IngestCard[] = detail?.cards ?? [];
+    if (!detail || !JOIN_BY_NAME.has(s.id)) return cards;
+    const nameJoinGroups = groupsFor(s.id, s.name, detail);
+    return cards.map((c) => ({ ...c, nameJoinGroups }));
+  };
+
+  for (const parent of parents) {
+    const detail = details.get(parent.id)!;
+    const cards = cardsOf(parent);
+    for (const child of children) {
+      if (MERGE_INTO[child.id] !== parent.id) continue;
+      const childCards = cardsOf(child);
+      // A subset that also stands alone owns the plain ids, so the parent's
+      // copies need their own.
+      cards.push(
+        ...(ALSO_STANDALONE.has(child.id)
+          ? childCards.map((c) => ({ ...c, id: `${c.id}@${parent.id}`, dexId: c.id }))
+          : childCards),
+      );
+    }
+
+    const matched = groupsFor(parent.id, parent.name, detail);
     if (!matched.length) unmatched.push(`${parent.id} (${parent.name})`);
     sets.push({ id: parent.id, region, detail, cards, groups: matched });
   }
@@ -135,7 +182,14 @@ async function ingestRegion(region: Region) {
   // Pull every card's rarity in one sweep of rarity-filtered list queries.
   const rarities = await dex.rarityMap(region);
 
-  const groupIds = [...new Set(sets.flatMap((s) => s.groups.map((g) => g.groupId)))];
+  const groupIds = [
+    ...new Set(
+      sets.flatMap((s) => [
+        ...s.groups.map((g) => g.groupId),
+        ...s.cards.flatMap((c) => c.nameJoinGroups?.map((g) => g.groupId) ?? []),
+      ]),
+    ),
+  ];
   const products = new Map<number, csv.CsvProduct[]>();
   const prices = new Map<number, csv.CsvPrice[]>();
   let done = 0;
@@ -152,6 +206,15 @@ async function ingestRegion(region: Region) {
   const pricesByProduct = new Map<number, csv.CsvPrice[]>();
   for (const rows of prices.values()) {
     for (const r of rows) push(pricesByProduct, r.productId, r);
+  }
+  const productById = new Map<number, csv.CsvProduct>();
+  for (const rows of products.values()) {
+    for (const p of rows) productById.set(p.productId, p);
+  }
+
+  for (const s of sets) {
+    resolveNameJoins(s, products);
+    addTcgplayerOnlyCards(s, products);
   }
 
   const insertSet = db.prepare(`
@@ -222,31 +285,31 @@ async function ingestRegion(region: Region) {
       // Join key -> TCGplayer single. Earlier groups win, so a set's primary
       // printing is never overwritten by a reprint group (e.g. Shadowless).
       const singles = new Map<string, csv.CsvProduct>();
-      const csvRarity = new Map<string, string>();
       for (const g of s.groups) {
         for (const p of products.get(g.groupId) ?? []) {
           if (!csv.isSingle(p)) continue;
           const num = csv.cardNumberOf(p);
           if (!num) continue;
           const key = numberKey(num);
-          if (!singles.has(key)) {
-            singles.set(key, p);
-            const r = csv.extended(p).Rarity;
-            if (r) csvRarity.set(key, r);
-          }
+          if (!singles.has(key)) singles.set(key, p);
         }
       }
 
       for (const c of s.cards) {
         const key = numberKey(c.localId);
-        const product = singles.get(key);
+        const product =
+          c.productId != null
+            ? productById.get(c.productId)
+            : c.nameJoinGroups
+              ? undefined
+              : singles.get(key);
         const priceRows = product ? pricesByProduct.get(product.productId) ?? [] : [];
         const market = headlinePrice(priceRows);
         // TCGdex is authoritative for rarity; TCGplayer fills the gaps. TCGdex
         // records a literal "None" for cards it has no rarity for, which is
         // most of the Japanese high-class sets.
-        const dexRarity = rarities.get(c.id);
-        const csvR = csvRarity.get(key);
+        const dexRarity = rarities.get(c.dexId ?? c.id);
+        const csvR = product ? csv.extended(product).Rarity : undefined;
         const rawRarity = hasRarity(dexRarity)
           ? dexRarity!
           : hasRarity(csvR)
@@ -268,7 +331,7 @@ async function ingestRegion(region: Region) {
           set_id: s.id,
           region,
           local_id: c.localId,
-          number_sort: numericPart(c.localId),
+          number_sort: c.numberSort ?? numericPart(c.localId),
           name: c.name,
           rarity: rawRarity,
           rarity_key: rKey,
@@ -338,6 +401,51 @@ async function ingestRegion(region: Region) {
   }
 }
 
+/**
+ * Pairs name-joined cards with their TCGplayer singles. Duplicate names (the
+ * two halves of a LEGEND) are paired in collector-number order on both sides.
+ */
+function resolveNameJoins(s: MatchedSet, products: Map<number, csv.CsvProduct[]>) {
+  const queues = new Map<string, Map<string, csv.CsvProduct[]>>();
+  for (const c of s.cards) {
+    if (!c.nameJoinGroups) continue;
+    const gkey = c.nameJoinGroups.map((g) => g.groupId).join(",");
+    let byName = queues.get(gkey);
+    if (!byName) {
+      byName = new Map();
+      const singles = c.nameJoinGroups
+        .flatMap((g) => products.get(g.groupId) ?? [])
+        .filter(csv.isSingle)
+        .sort((a, b) => numericPart(csv.cardNumberOf(a) ?? "") - numericPart(csv.cardNumberOf(b) ?? ""));
+      for (const p of singles) push(byName, nameKey(p.name.replace(/\s+-\s+\S+$/, "")), p);
+      queues.set(gkey, byName);
+    }
+    c.productId = byName.get(nameKey(c.name))?.shift()?.productId;
+  }
+}
+
+/** Appends the TCGplayer-only cards listed in TCGPLAYER_ONLY_CARDS. */
+function addTcgplayerOnlyCards(s: MatchedSet, products: Map<number, csv.CsvProduct[]>) {
+  const pattern = TCGPLAYER_ONLY_CARDS[s.id];
+  if (!pattern) return;
+  const extras = s.groups
+    .flatMap((g) => products.get(g.groupId) ?? [])
+    .filter((p) => pattern.test(csv.extended(p).Number ?? ""));
+  extras.forEach((p, i) => {
+    // "R/RGB" -> "RGB-R": slashes cannot go in a card URL.
+    const [head, tail] = csv.extended(p).Number.split("/");
+    const localId = `${tail}-${head}`;
+    s.cards.push({
+      id: `${s.id}-${localId}`,
+      localId,
+      name: p.name.replace(/\s+-\s+\S+$/, ""),
+      productId: p.productId,
+      // After the numbered cards, in TCGplayer's order.
+      numberSort: 10_000 + i,
+    });
+  });
+}
+
 /** Roll card and sealed data up into the per-set columns the index page sorts on. */
 function computeAggregates() {
   const db = getDb();
@@ -365,6 +473,11 @@ function computeAggregates() {
 
   const tx = db.transaction(() => {
     for (const s of setRows) {
+      // A standalone subset has no packs of its own; its parent carries the EV.
+      if (ALSO_STANDALONE.has(s.id)) {
+        update.run(null, s.id);
+        continue;
+      }
       const rows = cardsStmt.all(s.id) as { rarity_key: string; n: number; avg_price: number | null }[];
       const counts = Object.fromEntries(rows.map((r) => [r.rarity_key, r.n]));
       const entry = entryFor(s.region, s.id, s.release_date);

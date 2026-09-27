@@ -412,6 +412,38 @@ export const SPECIAL_SET_OVERRIDES: PullRateEntry[] = [
   },
   {
     region: "en",
+    key: "30th", // 30th Celebration (Classic Collection and RGB Mews merged in)
+    scope: "set",
+    packsPerBox: 36,
+    cardsPerPack: 5,
+    // Slots 1-3 commons, slot 4 the rare (bumped by any hit), slot 5 always
+    // one of the 30 Pikachu Rares.
+    packSlots: [
+      { rarityKeys: ["common"], count: 3 },
+      { rarityKeys: ["rare"], count: 1 },
+      { rarityKeys: ["pikachu"], count: 1 },
+    ],
+    confidence: "community",
+    source: {
+      name: "Wargamer — 30th Celebration pull rates from 4,063 opened packs",
+      url: "https://www.wargamer.com/pokemon-trading-card-game/30th-celebration-pull-rates",
+      sampleSize: 4063,
+    },
+    odds: [
+      { rarityKey: "double", perPack: 1 / 4 },
+      { rarityKey: "illustration", perPack: 1 / 5 },
+      { rarityKey: "classic", perPack: 1 / 10, note: "Classic Collection reprints appear in roughly 1 in 10 packs." },
+      { rarityKey: "special", perPack: 1 / 20 },
+      { rarityKey: "ultra", perPack: 1 / 100, note: "The two Futuristic Rares (Mewtwo ex, Mew ex)." },
+      {
+        rarityKey: "rgb",
+        perPack: 1 / 4063,
+        note: "One RGB Mew in 4,063 packs; the true rate could be anywhere from 1 in ~700 to 1 in ~23,000.",
+      },
+    ],
+  },
+  {
+    region: "en",
     key: "sv03.5", // 151
     scope: "set",
     packsPerBox: 36,

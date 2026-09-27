@@ -26,9 +26,17 @@ export function eraKeyFor(region: Region, setId: string, releaseDate: string | n
   return "ja-vintage";
 }
 
+/**
+ * Subsets listed as their own set but pulled from the parent's packs, so their
+ * per-card odds are the parent's.
+ */
+const PULLED_FROM: Record<string, string> = {
+  "30th-c": "30th",
+};
+
 export function entryFor(region: Region, setId: string, releaseDate: string | null): PullRateEntry {
   return (
-    BY_KEY.get(`${region}:${setId}`) ??
+    BY_KEY.get(`${region}:${PULLED_FROM[setId] ?? setId}`) ??
     BY_KEY.get(`${region}:${eraKeyFor(region, setId, releaseDate)}`) ??
     BY_KEY.get(`${region}:${region === "en" ? "en-vintage" : "ja-vintage"}`)!
   );

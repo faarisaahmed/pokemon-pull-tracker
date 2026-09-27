@@ -16,7 +16,8 @@ export async function loader({ params }: Route.LoaderArgs) {
   if (!set) throw new Response("Set not found", { status: 404 });
 
   const [detail, prices] = await Promise.all([
-    fetchCardDetail(card.region, card.id),
+    // A subset card copied into its parent set is stored as "<dex id>@<parent>".
+    fetchCardDetail(card.region, card.id.split("@")[0]),
     Promise.resolve(cardPrices(card.id)),
   ]);
   const { entry, odds } = oddsForCard(card, set);
