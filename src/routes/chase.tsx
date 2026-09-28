@@ -31,7 +31,7 @@ const CHASE_SORTS = {
 type ChaseSort = keyof typeof CHASE_SORTS;
 
 function valueOf(row: ChaseRow, key: string): number | null {
-  if (key === "packPrice") return row.set.packPrice;
+  if (key === "packPrice") return row.packPrice;
   return (row as unknown as Record<string, number | null>)[key] ?? null;
 }
 
@@ -44,6 +44,8 @@ export function loader({ request }: Route.LoaderArgs) {
   const dir = sp.dir === "asc" || sp.dir === "desc" ? sp.dir : sortDef.defaultDir;
 
   const eras = (sp.era ?? "").split(",").filter(Boolean);
+  // Loose packs, or the cheapest per-pack route (a bundle, ETB or box).
+  const buy = sp.buy === "best" ? "best" : "loose";
   const maxPack = Number(sp.max) > 0 ? Number(sp.max) : null;
 
   const rarities = availableRarities(region).filter((r) => r.rank >= 40);
@@ -55,7 +57,20 @@ export function loader({ request }: Route.LoaderArgs) {
     maxPack == null || (set.packPrice != null && set.packPrice <= maxPack);
   const inEra = (set: SetRow) => eras.length === 0 || eras.includes(eraSlug(eraOf(set.seriesName)));
 
-  const allRows = isGodPacks ? [] : chaseRows(target, region).filter((r) => affordable(r.set));
+  const allRows = isGodPacks
+    ? []
+    : chaseRows(target, region)
+        .map((r) => {
+          const packPrice = buy === "best" ? (r.set.bestPackPrice ?? r.set.packPrice) : r.set.packPrice;
+          return {
+            ...r,
+            packPrice,
+            costPerHit: packPrice != null ? packPrice / r.tierPerPack : null,
+            valueRatio:
+              packPrice != null && r.avgPrice != null ? (r.tierPerPack * r.avgPrice) / packPrice : null,
+          };
+        })
+        .filter((r) => maxPack == null || (r.packPrice != null && r.packPrice <= maxPack));
   const allGods = isGodPacks ? godPackSets(region).filter((g) => affordable(g.set)) : [];
   const eraChoices = eraOptions(isGodPacks ? allGods.map((g) => g.set) : allRows.map((r) => r.set));
 
@@ -83,12 +98,13 @@ export function loader({ request }: Route.LoaderArgs) {
     eras,
     eraChoices,
     maxPack: maxPack == null ? "all" : String(maxPack),
+    buy,
     filtered: eras.length > 0 || maxPack != null,
   };
 }
 
 export default function ChasePage({ loaderData }: Route.ComponentProps) {
-  const { region, target, sort, dir, rarities, isGodPacks, rows, gods, eras, eraChoices, maxPack, filtered } =
+  const { region, target, sort, dir, rarities, isGodPacks, rows, gods, eras, eraChoices, maxPack, filtered, buy } =
     loaderData;
   const meta = rarityMeta(target);
 
@@ -115,6 +131,16 @@ export default function ChasePage({ loaderData }: Route.ComponentProps) {
           ]}
         />
         <Select name="max" label="Pack price" value={maxPack} options={MAX_PACK_OPTIONS} />
+        {!isGodPacks ? (
+          <Toggle
+            name="buy"
+            value={buy}
+            options={[
+              { value: "loose", label: "Loose packs" },
+              { value: "best", label: "Cheapest way to buy" },
+            ]}
+          />
+        ) : null}
         {!isGodPacks ? (
           <>
             <Select
@@ -203,7 +229,7 @@ export default function ChasePage({ loaderData }: Route.ComponentProps) {
                         </span>
                       </Link>
                     </td>
-                    <td className="tnum px-3 py-2 text-right text-xs">{usd(r.set.packPrice)}</td>
+                    <td className="tnum px-3 py-2 text-right text-xs">{usd(r.packPrice)}</td>
                     <td className="tnum px-3 py-2 text-right text-xs" title={pct(r.tierPerPack)}>
                       {oneIn(r.tierPerPack)}
                     </td>
@@ -261,7 +287,9 @@ export default function ChasePage({ loaderData }: Route.ComponentProps) {
 
           <p className="mt-3 max-w-3xl text-[11px] leading-relaxed text-ink-500">
             <strong className="text-ink-400">Cost / hit</strong> is what you would expect to spend in
-            packs before pulling any <RarityChip rarityKey={target} /> — pack price ÷ per-pack odds.{" "}
+            packs before pulling any <RarityChip rarityKey={target} /> — pack price ÷ per-pack odds.
+            With <strong className="text-ink-400">Cheapest way to buy</strong> on, the pack price is
+            the lowest per-pack cost across loose packs, booster bundles, ETBs and booster boxes.{" "}
             <strong className="text-ink-400">Returned</strong> is the average value of that rarity
             multiplied by its odds, divided by the pack price; above 1.00× means the tier alone pays
             for the pack. Both assume you buy loose packs at market and ignore everything else in the

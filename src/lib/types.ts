@@ -28,6 +28,8 @@ export interface SetRow {
   expectedPackValue: number | null;
   /** The same, counting only hit rarities (Double Rare and up). */
   hitPackValue: number | null;
+  /** Cheapest price per pack across loose packs, bundles, ETBs and boxes. */
+  bestPackPrice: number | null;
 }
 
 export interface CardRow {
@@ -184,6 +186,8 @@ export interface ChaseRow {
   tierPerPack: number;
   /** Chance a pack contains one *specific* card of this rarity. */
   perCardPerPack: number;
+  /** The per-pack price the costs are worked from (loose by default). */
+  packPrice: number | null;
   /** Pack price divided by the tier's per-pack odds. */
   costPerHit: number | null;
   /** Expected value of the tier per pack, against the pack price. */

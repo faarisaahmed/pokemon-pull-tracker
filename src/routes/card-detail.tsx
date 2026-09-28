@@ -31,13 +31,15 @@ export async function loader({ params }: Route.LoaderArgs) {
   }).cards.filter((c) => c.id !== card.id);
 
   // A standalone subset has no packs; its cards are pulled from the parent's.
-  const packPrice = getSet(pullSetOf(set.id))?.packPrice ?? null;
+  const packSet = getSet(pullSetOf(set.id));
+  const packPrice = packSet?.packPrice ?? null;
+  const bestPackPrice = packSet?.bestPackPrice ?? packPrice;
 
-  return { card, set, detail, prices, entry, odds, siblings, packPrice };
+  return { card, set, detail, prices, entry, odds, siblings, packPrice, bestPackPrice };
 }
 
 export default function CardPage({ loaderData }: Route.ComponentProps) {
-  const { card, set, detail, prices, entry, odds, siblings, packPrice } = loaderData;
+  const { card, set, detail, prices, entry, odds, siblings, packPrice, bestPackPrice } = loaderData;
   const meta = rarityMeta(card.rarityKey);
   const costToPull = odds && packPrice ? odds.packsPerCopy * packPrice : null;
   const primaryType = detail?.types?.[0];
@@ -285,6 +287,19 @@ export default function CardPage({ loaderData }: Route.ComponentProps) {
             <PsaPanel cardId={card.id} rawPrice={card.marketPrice} />
           </Card>
 
+          {odds ? (
+            <Card title="Packs until you pull it">
+              <ChanceTable
+                perPack={odds.perPack}
+                packsPerBox={entry.packsPerBox}
+                boxPlural={box.plural}
+                packPrice={bestPackPrice}
+                cheaperThanLoose={bestPackPrice != null && packPrice != null && bestPackPrice < packPrice}
+                singlePrice={card.marketPrice}
+              />
+            </Card>
+          ) : null}
+
           <Card title="How these odds are worked out">
             <div className="space-y-2 px-4 py-3 text-xs leading-relaxed text-ink-400">
               {odds ? (
@@ -362,5 +377,76 @@ export default function CardPage({ loaderData }: Route.ComponentProps) {
         </section>
       ) : null}
     </>
+  );
+}
+
+/**
+ * "1 in 400" hides how lumpy luck is: 400 packs gives only a 63% chance. This
+ * shows how many packs (and what they cost) it takes to reach a given chance
+ * of at least one copy, next to just buying the card.
+ */
+function ChanceTable({
+  perPack,
+  packsPerBox,
+  boxPlural,
+  packPrice,
+  cheaperThanLoose,
+  singlePrice,
+}: {
+  perPack: number;
+  packsPerBox: number;
+  boxPlural: string;
+  packPrice: number | null;
+  cheaperThanLoose: boolean;
+  singlePrice: number | null;
+}) {
+  const rows = [0.5, 0.75, 0.9, 0.99].map((chance) => {
+    const packs = Math.ceil(Math.log(1 - chance) / Math.log(1 - perPack));
+    return { chance, packs, boxes: packs / packsPerBox, cost: packPrice != null ? packs * packPrice : null };
+  });
+  const half = rows[0];
+  return (
+    <div className="px-4 py-3">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-[10px] uppercase tracking-wider text-ink-500">
+            <th className="pb-1.5 font-medium">Chance of at least one</th>
+            <th className="pb-1.5 text-right font-medium">Packs</th>
+            <th className="pb-1.5 text-right font-medium">{boxPlural}</th>
+            <th className="pb-1.5 text-right font-medium">Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.chance} className="border-t border-ink-850">
+              <td className="py-1.5 text-xs text-ink-300">{Math.round(r.chance * 100)}%</td>
+              <td className="tnum py-1.5 text-right text-xs">{r.packs.toLocaleString()}</td>
+              <td className="tnum py-1.5 text-right text-xs text-ink-300">
+                {r.boxes < 10 ? r.boxes.toFixed(1) : Math.round(r.boxes).toLocaleString()}
+              </td>
+              <td className="tnum py-1.5 text-right text-xs font-semibold">{usd(r.cost, { compact: true })}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="mt-2 text-[11px] leading-relaxed text-ink-500">
+        {packPrice != null
+          ? `Costs use ${usd(packPrice)} a pack${cheaperThanLoose ? ", the cheapest way to buy this set's packs" : ""}. `
+          : "No pack price is listed for this set. "}
+        {singlePrice != null && half.cost != null ? (
+          half.cost < singlePrice * 1.5 && half.cost >= singlePrice ? (
+            <>A coin-flip chance of pulling it costs about the same as the single ({usd(singlePrice)}).</>
+          ) : half.cost > singlePrice ? (
+            <>
+              Buying the single for <strong className="text-ink-300">{usd(singlePrice)}</strong> is{" "}
+              <strong className="text-ink-300">{Math.round(half.cost / singlePrice).toLocaleString()}×</strong>{" "}
+              cheaper than a coin-flip chance of pulling it.
+            </>
+          ) : (
+            <>Opening for it is cheaper than the single ({usd(singlePrice)}) at even odds.</>
+          )
+        ) : null}
+      </p>
+    </div>
   );
 }

@@ -77,6 +77,14 @@ export default function SetPage({ loaderData }: Route.ComponentProps) {
   const { set, sort, dir, rarityKey, search, view, page, counts, entry, breakdown, sealed, cards, total, parent } =
     loaderData;
   const box = boxUnit(entry);
+  // Every product with a known pack count, cheapest per pack first.
+  const perPack = sealed
+    .filter((s) => s.packCount && s.market != null)
+    .map((s) => ({ ...s, each: s.market! / s.packCount! }))
+    .sort((a, b) => a.each - b.each);
+  const cheapest = perPack[0] ?? null;
+  const saving =
+    cheapest && set.packPrice && cheapest.kind !== "pack" ? 1 - cheapest.each / set.packPrice : null;
   const hitRatio =
     set.hitPackValue != null && set.packPrice ? set.hitPackValue / set.packPrice : null;
   const pageCount = Math.ceil(total / PAGE_SIZE);
@@ -117,6 +125,14 @@ export default function SetPage({ loaderData }: Route.ComponentProps) {
             <span className="text-ink-700">|</span>
             <span>{series.title} series</span>
           </p>
+          {!parent && entry.odds.length ? (
+            <Link
+              to={`/sets/${encodeURIComponent(set.id)}/open`}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-accent/40 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent/20"
+            >
+              Open packs of this set ▸
+            </Link>
+          ) : null}
           {parent ? (
             <p className="mt-1 text-xs text-ink-400">
               A subset pulled from{" "}
@@ -132,7 +148,14 @@ export default function SetPage({ loaderData }: Route.ComponentProps) {
       {/* ------------------------------------------------- price highlights */}
       <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
         {[
-          { label: "Pack", value: usd(set.packPrice) },
+          {
+            label: "Pack",
+            value: usd(set.packPrice),
+            sub:
+              saving != null && saving > 0.005
+                ? `${usd(cheapest!.each)} via ${KIND_LABEL[cheapest!.kind]?.toLowerCase() ?? cheapest!.kind}`
+                : undefined,
+          },
           { label: "Bundle", value: usd(set.bundlePrice) },
           { label: "Box", value: usd(set.boxPrice, { compact: true }) },
           { label: "ETB", value: usd(set.etbPrice, { compact: true }) },
@@ -161,7 +184,7 @@ export default function SetPage({ loaderData }: Route.ComponentProps) {
       </div>
 
       {/* ------------------------------------------------- collapsible detail */}
-      <div className="mb-6 grid gap-2 lg:grid-cols-2">
+      <div className="mb-6 grid items-start gap-2 lg:grid-cols-2">
         <DetailsPanel label="Pull rates" count={`${breakdown.length} rarities`}>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[480px] text-sm">
@@ -221,6 +244,41 @@ export default function SetPage({ loaderData }: Route.ComponentProps) {
         </DetailsPanel>
 
         <DetailsPanel label="Sealed products" count={`${sealed.length} listed`}>
+          {perPack.length > 1 ? (
+            <div className="border-b border-ink-800 px-4 py-3">
+              <div className="mb-1.5 text-[10px] uppercase tracking-wider text-ink-500">
+                Cheapest way to buy packs
+              </div>
+              <ol className="space-y-1">
+                {perPack.slice(0, 4).map((p, i) => {
+                  const vsLoose = set.packPrice ? p.each / set.packPrice - 1 : null;
+                  return (
+                    <li key={p.id} className="flex items-center gap-2 text-xs">
+                      <span className="tnum w-4 text-ink-600">{i + 1}</span>
+                      <span className={`min-w-0 flex-1 truncate ${i === 0 ? "font-semibold text-ink-100" : "text-ink-300"}`}>
+                        {KIND_LABEL[p.kind] ?? p.kind}
+                        <span className="text-ink-500">
+                          {" "}· {p.packCount} pack{p.packCount === 1 ? "" : "s"} for {usd(p.market)}
+                        </span>
+                      </span>
+                      <span className={`tnum font-semibold ${i === 0 ? "text-accent" : "text-ink-200"}`}>
+                        {usd(p.each)}/pack
+                      </span>
+                      <span className="tnum w-14 text-right text-[10px] text-ink-500">
+                        {vsLoose == null || p.kind === "pack"
+                          ? "loose"
+                          : `${vsLoose <= 0 ? "" : "+"}${Math.round(vsLoose * 100)}%`}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
+              <p className="mt-1.5 text-[10px] text-ink-500">
+                ETBs also include sleeves, dice and a promo, so their per-pack price overstates what the
+                packs cost.
+              </p>
+            </div>
+          ) : null}
           {sealed.length === 0 ? (
             <p className="px-4 py-5 text-sm text-ink-500">
               No sealed product is currently listed for this set on TCGplayer.

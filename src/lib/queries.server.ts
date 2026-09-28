@@ -74,6 +74,7 @@ function rowToSet(r: Record<string, unknown>): SetRow {
     setValue: (r.set_value as number) ?? null,
     expectedPackValue: (r.expected_pack_value as number) ?? null,
     hitPackValue: (r.hit_pack_value as number) ?? null,
+    bestPackPrice: (r.best_pack_price as number) ?? null,
   };
 }
 
@@ -366,6 +367,7 @@ export function chaseRows(rarityKey: string, region: Region | "all"): ChaseRow[]
       topCardImage: top?.image ?? null,
       tierPerPack: tier,
       perCardPerPack: tier / r.pool,
+      packPrice: set.packPrice,
       costPerHit: set.packPrice != null ? set.packPrice / tier : null,
       valueRatio:
         set.packPrice != null && r.avg_price != null

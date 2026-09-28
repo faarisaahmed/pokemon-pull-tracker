@@ -583,6 +583,8 @@ function computeAggregates() {
       bundle_price = (SELECT MIN(market) FROM sealed WHERE sealed.set_id = sets.id AND kind='bundle' AND market IS NOT NULL),
       box_price    = (SELECT MIN(market) FROM sealed WHERE sealed.set_id = sets.id AND kind='box'    AND market IS NOT NULL),
       etb_price    = (SELECT MIN(market) FROM sealed WHERE sealed.set_id = sets.id AND kind='etb'    AND market IS NOT NULL),
+      best_pack_price = (SELECT ROUND(MIN(market / pack_count), 2) FROM sealed
+                         WHERE sealed.set_id = sets.id AND pack_count > 0 AND market IS NOT NULL),
       set_value    = (SELECT ROUND(SUM(market_price), 2) FROM cards WHERE cards.set_id = sets.id),
       tile_image   = (SELECT image FROM cards WHERE cards.set_id = sets.id AND image IS NOT NULL
                       ORDER BY market_price DESC LIMIT 1)

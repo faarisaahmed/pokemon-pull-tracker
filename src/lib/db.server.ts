@@ -31,7 +31,9 @@ CREATE TABLE IF NOT EXISTS sets (
   set_value          REAL,
   expected_pack_value REAL,
   -- EV from hit rarities only, leaving out bulk commons/uncommons/rares.
-  hit_pack_value     REAL
+  hit_pack_value     REAL,
+  -- Cheapest price per pack across loose packs, bundles, ETBs and boxes.
+  best_pack_price    REAL
 );
 CREATE INDEX IF NOT EXISTS idx_sets_region ON sets(region);
 CREATE INDEX IF NOT EXISTS idx_sets_release ON sets(release_date);
@@ -156,6 +158,7 @@ function migrate(db: Database.Database) {
     (db.prepare("PRAGMA table_info(sets)").all() as { name: string }[]).map((c) => c.name),
   );
   if (!cols.has("hit_pack_value")) db.exec("ALTER TABLE sets ADD COLUMN hit_pack_value REAL");
+  if (!cols.has("best_pack_price")) db.exec("ALTER TABLE sets ADD COLUMN best_pack_price REAL");
   const cardCols = new Set(
     (db.prepare("PRAGMA table_info(cards)").all() as { name: string }[]).map((c) => c.name),
   );
