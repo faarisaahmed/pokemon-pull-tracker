@@ -1,4 +1,6 @@
-# Pull Tracker
+# Ripwise
+
+*Know the odds before you rip.*
 
 > **Not produced by, endorsed by, or affiliated with Nintendo, Creatures Inc., GAME FREAK inc., The
 > Pokémon Company, TCGplayer or eBay.** "Pokémon" and all related names are trademarks of their
@@ -8,7 +10,7 @@
 
 A read-only reference for Pokémon TCG **prices** and **pull rates**, covering every English and
 Japanese expansion. It is deliberately not a collection tracker — there is nothing to log, add or
-own. You look up what a card is worth, what a pack costs, and how many packs you would have to open
+own; that's its sibling, [Holovault](https://github.com/faarisaahmed/holovault). You look up what a card is worth, what a pack costs, and how many packs you would have to open
 to hit a given card.
 
 - **Sets index** — set tiles grouped by series, with a series chip filter and an Images/List view
@@ -204,6 +206,9 @@ SQLite queries behind every page or the `/api/psa` route. A static export would 
 data into the published repo, and dropping the PSA endpoint entirely.
 
 ### Render
+
+The app was renamed from Pull Tracker to Ripwise; the GitHub repo (`pokemon-pull-tracker`) and the Render
+service (`pull-tracker`) keep their original names so the live deployment and its deploy hook are untouched.
 
 `render.yaml` is a ready blueprint — create a Blueprint instance from the repo and it deploys. The
 free tier sleeps after 15 minutes idle, so the first request afterwards takes roughly a minute.

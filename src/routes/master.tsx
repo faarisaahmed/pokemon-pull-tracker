@@ -15,8 +15,8 @@ import type { Region } from "@/lib/types";
 export const meta: Route.MetaFunction = ({ loaderData }) => [
   {
     title: loaderData?.species
-      ? `${loaderData.species.name} master set — Pull Tracker`
-      : "Master set builder — Pull Tracker",
+      ? `${loaderData.species.name} master set — Ripwise`
+      : "Master set builder — Ripwise",
   },
 ];
 

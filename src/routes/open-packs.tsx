@@ -10,7 +10,7 @@ import { makePackOpener, type SimCard, type SimPack } from "@/lib/simulate";
 import { STANDALONE_SUBSETS } from "@/lib/subsets";
 
 export const meta: Route.MetaFunction = ({ loaderData }) => [
-  { title: loaderData ? `Open ${loaderData.set.name} packs — Pull Tracker` : "Open packs — Pull Tracker" },
+  { title: loaderData ? `Open ${loaderData.set.name} packs — Ripwise` : "Open packs — Ripwise" },
 ];
 
 export function loader({ params }: Route.LoaderArgs) {

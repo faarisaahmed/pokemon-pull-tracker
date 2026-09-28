@@ -1,4 +1,4 @@
-const UA = "PokemonPullTracker/0.1 (personal price + pull-rate reference)";
+const UA = "Ripwise/0.1 (personal price + pull-rate reference)";
 
 export async function getJson<T>(url: string, attempt = 0): Promise<T> {
   try {

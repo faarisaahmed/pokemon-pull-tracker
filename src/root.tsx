@@ -24,11 +24,11 @@ export const links: Route.LinksFunction = () => [
 ];
 
 export const meta: Route.MetaFunction = () => [
-  { title: "Pull Tracker — Pokémon TCG prices & pull rates" },
+  { title: "Ripwise — know the odds before you rip" },
   {
     name: "description",
     content:
-      "Every English and Japanese Pokémon TCG expansion: card market prices, PSA graded comps, sealed product prices and per-card pull rates.",
+      "Ripwise: pull rates, prices and what to open for every English and Japanese Pokémon TCG expansion — per-card odds, pack EV, cost per hit, sealed prices and a pack simulator.",
   },
 ];
 
@@ -59,10 +59,8 @@ export default function App({ loaderData }: Route.ComponentProps) {
       <header className="sticky top-0 z-30 border-b border-ink-800 bg-ink-950/85 backdrop-blur">
         <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-3 sm:gap-6">
           <Link to="/" className="flex shrink-0 items-center gap-2 font-semibold tracking-tight">
-            <span className="grid h-6 w-6 place-items-center rounded-md bg-accent text-[11px] font-black tracking-tighter text-black">
-              PT
-            </span>
-            <span className="hidden sm:inline">Pull Tracker</span>
+            <img src="/favicon.svg" alt="" className="h-6 w-6" />
+            <span className="hidden sm:inline">Ripwise</span>
           </Link>
           {/* Scrolls sideways on phones rather than widening the page. */}
           <nav className="-my-1 flex min-w-0 flex-1 items-center gap-4 overflow-x-auto whitespace-nowrap py-1 text-sm text-ink-300">
