@@ -41,18 +41,26 @@ export function makePackOpener(entry: PullRateEntry, cards: SimCard[], rng: Rng 
   const tiers = entry.odds
     .map((o) => ({
       key: o.rarityKey,
+      slot: o.slot ?? "rare",
       p: o.perPack ?? (o.perBox != null ? o.perBox / entry.packsPerBox : 0),
     }))
     .filter((t) => t.p > 0 && byKey.has(t.key));
   const guaranteed = tiers.filter((t) => t.p >= 1);
-  const chance = tiers.filter((t) => t.p < 1);
-  const chanceTotal = chance.reduce((s, t) => s + t.p, 0);
+  // Hit tiers grouped by the slot they take over: within a slot they are
+  // alternatives, across slots they are independent.
+  const bySlotName = new Map<string, typeof tiers>();
+  for (const t of tiers.filter((t) => t.p < 1)) {
+    bySlotName.set(t.slot, [...(bySlotName.get(t.slot) ?? []), t]);
+  }
 
   const slots = entry.packSlots
     .map((s) => ({ ...s, pool: s.rarityKeys.flatMap((k) => byKey.get(k) ?? []) }))
     .filter((s) => s.pool.length);
-  // Hits displace a card from the rare slot, as they do in a real pack.
-  const rareSlot = slots.findLastIndex((s) => s.rarityKeys.includes("rare"));
+  /** Index of the slot a hit displaces: the named one, else the last rare slot. */
+  const slotIndex = (name: string) => {
+    const named = slots.findIndex((s) => s.name === name);
+    return named >= 0 ? named : slots.findLastIndex((s) => s.rarityKeys.includes("rare"));
+  };
   const godPool = cards.filter((c) => c.rank >= 80).length >= 3
     ? cards.filter((c) => c.rank >= 80)
     : cards.filter((c) => c.rank >= 50);
@@ -93,27 +101,32 @@ export function makePackOpener(entry: PullRateEntry, cards: SimCard[], rng: Rng 
       for (let i = 0; i < Math.floor(t.p); i++) draw(t.key);
       if (rng() < t.p % 1) draw(t.key);
     }
-    let rolledHit = false;
-    if (chanceTotal <= 1) {
-      // One hit slot: the tiers are alternatives for it.
-      let u = rng();
-      for (const t of chance) {
-        if (u < t.p) {
-          draw(t.key);
-          rolledHit = true;
-          break;
+    for (const [slotName, group] of bySlotName) {
+      const total = group.reduce((s, t) => s + t.p, 0);
+      let hit = false;
+      if (total <= 1) {
+        let u = rng();
+        for (const t of group) {
+          if (u < t.p) {
+            draw(t.key);
+            hit = true;
+            break;
+          }
+          u -= t.p;
         }
-        u -= t.p;
-      }
-    } else {
-      for (const t of chance) {
-        if (rng() < t.p) {
-          draw(t.key);
-          rolledHit = true;
+      } else {
+        // Published rates that overlap (e.g. a pack can hold two) can't share
+        // one slot; roll them independently instead.
+        for (const t of group) {
+          if (rng() < t.p) {
+            draw(t.key);
+            hit = true;
+          }
         }
       }
+      const idx = slotIndex(slotName);
+      if (hit && idx >= 0 && bySlot[idx].length) bySlot[idx].pop();
     }
-    if (rolledHit && rareSlot >= 0 && bySlot[rareSlot].length) bySlot[rareSlot].pop();
 
     const pack = [...bySlot.flat(), ...hits].sort((a, b) => a.rank - b.rank);
     return { cards: pack, value: sum(pack), godPack: false };

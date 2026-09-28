@@ -376,12 +376,12 @@ function GodPacks({ gods, filtered }: { gods: GodPackSet[]; filtered: boolean })
 
       <p className="mt-4 max-w-3xl text-[11px] leading-relaxed text-ink-500">
         God packs replace every slot in a booster with hits. Japanese sets have printed them for
-        years; English sets started with 151 (as demi-god packs), then Prismatic Evolutions, Black
-        Bolt, White Flare and Ascended Heroes. The Pokémon Company has never published a rate, so
-        every figure is a community estimate — 1 in 600 where nothing better exists, or the range
-        reported from opening streams (about 1 in 700–1,000 for Black Bolt and White Flare, 1 in
-        950–2,000 for Ascended Heroes). Treat the percentages as an order of magnitude, not a number
-        to plan around. Japanese contents are compiled from collector reports via{" "}
+        years; in English, TCGplayer&rsquo;s studies confirm them in 151 (as demi-god packs),
+        Prismatic Evolutions and Ascended Heroes. No one has published a rate, so every figure is a
+        community estimate — box tallies for the Japanese high-class packs, 1 in 600 where nothing
+        better exists, and 1 in 600 to 2,000 for Ascended Heroes. Treat the percentages as an order
+        of magnitude, not a number to plan around. Japanese contents are compiled from collector
+        reports via{" "}
         <a
           href="https://www.thetrainercourt.com/blogs/resources/japanese-booster-box-guaranteed-hit-rates-god-packs"
           target="_blank"

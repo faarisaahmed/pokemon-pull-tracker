@@ -83,7 +83,7 @@ npm run dev
 | Card images | TCGdex, falling back to TCGplayer | TCGdex only has art for ~34% of the Japanese pool; the TCGplayer product image covers the rest. |
 | Single + sealed market prices | TCGplayer via [TCGCSV](https://tcgcsv.com) | Category 3 (English) and 85 (Japanese). |
 | PSA graded prices | eBay sold listings | Scraped on demand per card, cached for 7 days. |
-| Pull rates | Published opening studies + per-box guarantees | Curated in `src/lib/pullrates/data.ts`, every entry carrying its source and sample size. |
+| Pull rates | Published opening studies + per-box tallies | Curated in `src/lib/pullrates/en.ts` and `ja.ts`, every entry carrying its source and sample size. |
 
 ### What is excluded
 
@@ -93,20 +93,32 @@ prices are meaningless for them. The rules live in `scripts/ingest/set-config.ts
 
 ## Pull rates
 
-No API publishes pull rates, so `src/lib/pullrates/data.ts` is hand-curated. Two shapes of data
-exist because the two markets differ:
+No API publishes pull rates, so they are hand-curated from published studies, with the source and
+sample size on every entry. Two shapes of data exist because the two markets differ:
 
-- **English** packs are pure random slots, so studies report a per-pack probability per rarity tier.
-- **Japanese** boxes ship with fixed per-box guarantees ("1 Super Rare or better, 3 Art Rares,
-  4 Double Rares per box"), which get divided by the box size.
+- **English** (`src/lib/pullrates/en.ts`): packs are random slots, so studies report a per-pack
+  chance per tier. Every Scarlet & Violet and Mega Evolution set, and Evolving Skies, Fusion Strike,
+  Astral Radiance, Lost Origin, Silver Tempest and Crown Zenith, use TCGplayer's own studies
+  (1,200–8,500 packs each). Other Sword & Shield sets use Elite Fourum's stream-opening tallies
+  (2,000–5,000 packs) or smaller DigitalTQ samples; older eras use Elite Fourum box tallies.
+  Sword & Shield alternate arts get their own tiers (TCGplayer's product names mark them), as do
+  Trainer and Galarian Gallery V cards, and regular GX/EX are split from full arts before that.
+- **Japanese** (`src/lib/pullrates/ja.ts`): boxes ship with observed per-box contents ("4 RR, 3 AR,
+  1 SR or better"), mostly from ポケゲトちゃんねる's 300–2,000-box tallies, divided by the box size.
+  Japanese rarities come from TCGplayer first (TCGdex's labels change meaning between eras) — see
+  `scripts/ingest/rarity-rules.ts`.
 
-Per-card odds are the tier's rate divided by the number of cards sharing that tier in the set.
+Per-card odds are the tier's rate divided by the number of cards sharing that tier in the set. A
+tier with no sourced figure is left without odds rather than guessed (the card says "no data"), and
+where a gap had to be filled from a neighbouring set or an estimated split, the note on that tier
+says so. `tests/pullrates-data.test.ts` checks every entry for unknown rarity keys, impossible
+slot totals and missing sources.
 
 **God packs** have never been acknowledged by The Pokémon Company, so there is no measured rate.
-Japanese sets have printed them for years; English sets started with 151 (demi-god packs), then
-Prismatic Evolutions, Black Bolt, White Flare and Ascended Heroes (`GOD_PACKS` in
-`src/lib/pullrates/data.ts`). Rates are community estimates — 1 in 600 where nothing better exists —
-and always labelled as such.
+Japanese sets have printed them for years; in English, TCGplayer's studies confirm them in 151
+(demi-god packs), Prismatic Evolutions and Ascended Heroes (`GOD_PACKS` in
+`src/lib/pullrates/data.ts`). Rates are community estimates — Japanese box tallies where they exist,
+1 in 600 otherwise — and always labelled as such.
 
 **EV per pack** is each tier's per-card odds × its average card price, summed. A tier where most
 cards have no price yet only counts the priced ones, so one sale does not stand in for the rest.

@@ -104,6 +104,12 @@ export interface RarityOdds {
   /** Expected number of cards of this rarity per sealed booster box. */
   perBox?: number;
   note?: string;
+  /**
+   * The pack slot (PackSlot.name) a hit of this tier takes over. Tiers that
+   * share a slot exclude each other within a pack; tiers in different slots
+   * can land in the same pack. Defaults to "rare".
+   */
+  slot?: string;
 }
 
 /**
@@ -113,6 +119,8 @@ export interface RarityOdds {
 export interface PackSlot {
   rarityKeys: string[];
   count: number;
+  /** Names the slot so hit tiers can say which card they displace. */
+  name?: string;
 }
 
 /**

@@ -16,6 +16,10 @@ export function eraKeyFor(region: Region, setId: string, releaseDate: string | n
     if (/^(sm|det)/.test(setId)) return "en-sm";
     if (/^(xy|g1|dc1)/.test(setId)) return "en-xy";
     if (/^(bw|dv1|rc)/.test(setId)) return "en-bw";
+    if (/^(hgss|col1)/.test(setId)) return "en-hgss";
+    if (/^(dp|pl)/.test(setId)) return "en-dp";
+    if (/^ex\d/.test(setId)) return "en-ex";
+    // WOTC: Base through Neo, Legendary Collection and the e-Card sets.
     return "en-vintage";
   }
   if (/^M\d|^M-/.test(setId)) return "ja-me";
@@ -95,12 +99,20 @@ export function cardOdds(
     if (tier.perPack != null) tierPerPack = tier.perPack;
     else if (tier.perBox != null) tierPerPack = tier.perBox / entry.packsPerBox;
   } else {
-    const slot = entry.packSlots.find((s) => s.rarityKeys.includes(rarityKey));
-    if (!slot) return null;
-    const pooled = slot.rarityKeys.reduce((sum, k) => sum + (counts[k] ?? 0), 0);
+    // A card can come from every slot whose pool includes its rarity (a rare
+    // from the rare slot or a reverse-holo slot), so miss chances multiply.
+    const slots = entry.packSlots.filter((s) => s.rarityKeys.includes(rarityKey));
+    if (!slots.length) return null;
+    let miss = 1;
+    let pooled = 0;
+    for (const slot of slots) {
+      const n = slot.rarityKeys.reduce((sum, k) => sum + (counts[k] ?? 0), 0);
+      if (n === 0) continue;
+      pooled ||= n;
+      miss *= Math.pow(1 - 1 / n, slot.count);
+    }
     if (pooled === 0) return null;
-    // Probability of at least one copy across `slot.count` independent draws.
-    const perPack = 1 - Math.pow(1 - 1 / pooled, slot.count);
+    const perPack = 1 - miss;
     return {
       rarityKey,
       perPack,

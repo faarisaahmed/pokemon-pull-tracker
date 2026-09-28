@@ -1,11 +1,12 @@
 import { getDb } from "../../src/lib/db.server";
-import { hasRarity, isHitRarity, rarityKeyOf, rarityMeta } from "../../src/lib/rarity";
+import { isHitRarity, rarityMeta } from "../../src/lib/rarity";
 import { cardOdds, entryFor } from "../../src/lib/pullrates";
 import type { Region, SealedKind } from "../../src/lib/types";
 import { mapLimit, progress } from "./http";
 import * as dex from "./tcgdex";
 import * as csv from "./tcgcsv";
 import { pairByName, productCardName } from "./names";
+import { resolveRarity } from "./rarity-rules";
 import {
   ALSO_STANDALONE,
   GROUP_ALIASES,
@@ -306,17 +307,19 @@ async function ingestRegion(region: Region) {
               : singles.get(key);
         const priceRows = product ? pricesByProduct.get(product.productId) ?? [] : [];
         const market = headlinePrice(priceRows);
-        // TCGdex is authoritative for rarity; TCGplayer fills the gaps. TCGdex
-        // records a literal "None" for cards it has no rarity for, which is
-        // most of the Japanese high-class sets.
-        const dexRarity = rarities.get(c.dexId ?? c.id);
-        const csvR = product ? csv.extended(product).Rarity : undefined;
-        const rawRarity = hasRarity(dexRarity)
-          ? dexRarity!
-          : hasRarity(csvR)
-            ? csvR!
-            : null;
-        const rKey = rarityKeyOf(rawRarity);
+        // Which source wins differs by language; see rarity-rules.ts.
+        const { raw: rawRarity, key: rKey } = resolveRarity({
+          region,
+          setId: (c.dexId ?? c.id).slice(0, (c.dexId ?? c.id).lastIndexOf("-")),
+          cardId: c.dexId ?? c.id,
+          localId: c.localId,
+          cardName: c.name,
+          productName: product?.name,
+          number: numericPart(c.localId),
+          officialCount: d.cardCount?.official ?? 0,
+          dex: rarities.get(c.dexId ?? c.id),
+          tcgplayer: product ? csv.extended(product).Rarity : undefined,
+        });
         if (rKey === "unknown") missingRarity.push(c.id);
 
         // TCGdex has no artwork for roughly two thirds of the Japanese pool, so
