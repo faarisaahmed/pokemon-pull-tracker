@@ -9,6 +9,7 @@ import { fetchCardDetail } from "@/lib/tcgdex-live.server";
 import { formatLegality } from "@/lib/tcgdex";
 import { boxUnit } from "@/lib/pullrates";
 import { dexIdOf, pullSetOf } from "@/lib/subsets";
+import { useHolovaultUrl } from "@/root";
 import { cardPrices, getCard, getSet, listCards, oddsForCard } from "@/lib/queries.server";
 
 export async function loader({ params }: Route.LoaderArgs) {
@@ -44,6 +45,7 @@ export default function CardPage({ loaderData }: Route.ComponentProps) {
   const costToPull = odds && packPrice ? odds.packsPerCopy * packPrice : null;
   const primaryType = detail?.types?.[0];
   const box = boxUnit(entry);
+  const holovault = useHolovaultUrl();
 
   return (
     <>
@@ -89,6 +91,16 @@ export default function CardPage({ loaderData }: Route.ComponentProps) {
               <span className="block text-ink-500">{fullDate(set.releaseDate)}</span>
             </span>
           </Link>
+          {holovault ? (
+            <a
+              href={`${holovault}/add?q=${encodeURIComponent(`${card.name} ${card.localId}`)}${card.region === "ja" ? "&region=ja" : ""}`}
+              target="_blank"
+              rel="noopener"
+              className="block text-center text-[11px] text-ink-500 underline hover:text-accent"
+            >
+              Pulled one? Track it in Holovault ↗
+            </a>
+          ) : null}
         </div>
 
         {/* ------------------------------------------------------- card data */}

@@ -9,6 +9,7 @@ import { boxUnit, entryFor, tierOdds } from "@/lib/pullrates";
 import { rarityMeta } from "@/lib/rarity";
 import { seriesLabel } from "@/lib/series";
 import { STANDALONE_SUBSETS } from "@/lib/subsets";
+import { useHolovaultUrl } from "@/root";
 import {
   getSet,
   listCards,
@@ -77,6 +78,7 @@ export default function SetPage({ loaderData }: Route.ComponentProps) {
   const { set, sort, dir, rarityKey, search, view, page, counts, entry, breakdown, sealed, cards, total, parent } =
     loaderData;
   const box = boxUnit(entry);
+  const holovault = useHolovaultUrl();
   // Every product with a known pack count, cheapest per pack first.
   const perPack = sealed
     .filter((s) => s.packCount && s.market != null)
@@ -124,6 +126,19 @@ export default function SetPage({ loaderData }: Route.ComponentProps) {
             <span className="tnum">{set.cardCountTotal} cards</span>
             <span className="text-ink-700">|</span>
             <span>{series.title} series</span>
+            {holovault ? (
+              <>
+                <span className="text-ink-700">|</span>
+                <a
+                  href={`${holovault}/sets/${encodeURIComponent(parent?.id ?? set.id)}`}
+                  target="_blank"
+                  rel="noopener"
+                  className="underline hover:text-accent"
+                >
+                  Track your progress ↗
+                </a>
+              </>
+            ) : null}
           </p>
           {!parent && entry.odds.length ? (
             <Link

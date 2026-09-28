@@ -207,6 +207,9 @@ data into the published repo, and dropping the PSA endpoint entirely.
 
 ### Render
 
+Optional: set `HOLOVAULT_URL` to the sister collection tracker's address to show a few quiet links to it
+(footer, set pages, card pages). Without it, Ripwise never mentions Holovault.
+
 The app was renamed from Pull Tracker to Ripwise; the GitHub repo (`pokemon-pull-tracker`) and the Render
 service (`pull-tracker`) keep their original names so the live deployment and its deploy hook are untouched.
 

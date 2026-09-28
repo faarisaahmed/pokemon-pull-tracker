@@ -6,6 +6,7 @@ import {
   ScrollRestoration,
   isRouteErrorResponse,
   Link,
+  useRouteLoaderData,
 } from "react-router";
 import type { Route } from "./+types/root";
 import "./app.css";
@@ -14,7 +15,16 @@ import { THEME_INIT_SCRIPT } from "@/lib/themes";
 import { lastIngest } from "@/lib/queries.server";
 
 export function loader() {
-  return { ingested: lastIngest() };
+  return {
+    ingested: lastIngest(),
+    // The sister collection tracker, when this deployment knows its address.
+    holovault: process.env.HOLOVAULT_URL?.replace(/\/$/, "") || null,
+  };
+}
+
+/** Holovault's address, or null when it isn't configured (links stay hidden). */
+export function useHolovaultUrl(): string | null {
+  return useRouteLoaderData<typeof loader>("root")?.holovault ?? null;
 }
 
 export const links: Route.LinksFunction = () => [
@@ -92,7 +102,16 @@ export default function App({ loaderData }: Route.ComponentProps) {
         <Outlet />
       </main>
       <footer className="mx-auto max-w-[1400px] px-4 pb-10 pt-4 text-[11px] leading-relaxed text-ink-400">
-        A reference for prices and odds — not a collection tracker. Card data from TCGdex, market
+        A reference for prices and odds — not a collection tracker
+        {loaderData?.holovault ? (
+          <>
+            ; for tracking your own cards there's the sister site,{" "}
+            <a href={loaderData.holovault} className="underline hover:text-ink-200">
+              Holovault
+            </a>
+          </>
+        ) : null}
+        . Card data from TCGdex, market
         prices from TCGplayer via TCGCSV, graded comps from eBay sold listings. Pull rates are
         compiled from published pack-opening studies and per-box guarantees; every figure links to
         its source.
