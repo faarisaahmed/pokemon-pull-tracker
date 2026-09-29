@@ -10,6 +10,7 @@ import {
 } from "react-router";
 import type { Route } from "./+types/root";
 import "./app.css";
+import { MobileNav } from "@/components/mobile-nav";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { THEME_INIT_SCRIPT } from "@/lib/themes";
 import { lastIngest } from "@/lib/queries.server";
@@ -71,10 +72,10 @@ export default function App({ loaderData }: Route.ComponentProps) {
         <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-3 sm:gap-6">
           <Link to="/" className="flex shrink-0 items-center gap-2 font-semibold tracking-tight">
             <img src="/favicon.svg" alt="" className="h-6 w-6" />
-            <span className="hidden sm:inline">Ripwise</span>
+            <span>Ripwise</span>
           </Link>
-          {/* Scrolls sideways on phones rather than widening the page. */}
-          <nav className="-my-1 flex min-w-0 flex-1 items-center gap-4 overflow-x-auto whitespace-nowrap py-1 text-sm text-ink-300">
+          {/* Phones use the tab bar at the bottom instead. */}
+          <nav className="-my-1 hidden min-w-0 flex-1 items-center gap-4 overflow-x-auto whitespace-nowrap py-1 text-sm text-ink-300 md:flex">
             <Link to="/" className="transition-colors hover:text-accent">
               Sets
             </Link>
@@ -102,7 +103,8 @@ export default function App({ loaderData }: Route.ComponentProps) {
       <main className="mx-auto max-w-[1400px] px-4 py-6">
         <Outlet />
       </main>
-      <footer className="mx-auto max-w-[1400px] px-4 pb-10 pt-4 text-[11px] leading-relaxed text-ink-400">
+      <MobileNav />
+      <footer className="mx-auto max-w-[1400px] px-4 pb-24 pt-4 md:pb-10 text-[11px] leading-relaxed text-ink-400">
         A reference for prices and odds — not a collection tracker
         {loaderData?.shadowless ? (
           <>

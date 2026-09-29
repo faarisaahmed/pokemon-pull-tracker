@@ -187,7 +187,28 @@ export default function ChasePage({ loaderData }: Route.ComponentProps) {
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-xl border border-ink-800 bg-ink-900">
+          {/* Phones: the ranking with cost per hit up front. */}
+          <ol className="divide-y divide-ink-850 overflow-hidden rounded-xl border border-ink-800 bg-ink-900 md:hidden">
+            {rows.map((r, i) => (
+              <li key={`${r.set.region}-${r.set.id}`}>
+                <Link to={`/sets/${encodeURIComponent(r.set.id)}?rarity=${target}`} className="flex items-center gap-2.5 px-3 py-2.5 active:bg-ink-850">
+                  <span className="tnum w-5 shrink-0 text-xs text-ink-600">{i + 1}</span>
+                  <RegionBadge region={r.set.region} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">{r.set.name}</span>
+                    <span className="tnum block text-[10px] text-ink-500">
+                      {usd(r.packPrice)} pack · {oneIn(r.tierPerPack)} · {shortDate(r.set.releaseDate)}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-right">
+                    <span className="tnum block text-sm font-semibold text-accent">{usd(r.costPerHit)}</span>
+                    <span className="block text-[9px] uppercase tracking-wider text-ink-500">per hit</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ol>
+          <div className="hidden overflow-x-auto rounded-xl border border-ink-800 bg-ink-900 md:block">
             <table className="w-full min-w-[1040px] text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-left text-[10px] uppercase tracking-wider text-ink-400">

@@ -90,7 +90,32 @@ export function CardTable({
   showSet?: boolean;
 }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-ink-800 bg-ink-900">
+    <>
+    {/* Phones: name and set on the left, price and odds on the right. */}
+    <ul className="divide-y divide-ink-850 overflow-hidden rounded-xl border border-ink-800 bg-ink-900 md:hidden">
+      {cards.map((c) => {
+        const odds = entry && counts ? cardOdds(entry, c.rarityKey, counts) : null;
+        return (
+          <li key={c.id}>
+            <Link to={`/cards/${encodeURIComponent(c.id)}`} className="flex items-center gap-3 px-3 py-2 active:bg-ink-850">
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">{c.name}</span>
+                <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-ink-500">
+                  <span className="tnum">{c.localId}</span>
+                  {showSet ? <span className="truncate">{c.setId}</span> : null}
+                  <RarityChip rarityKey={c.rarityKey} label={c.rarity} />
+                </span>
+              </span>
+              <span className="shrink-0 text-right">
+                <span className="tnum block text-sm font-medium">{usd(c.marketPrice)}</span>
+                {odds ? <span className="tnum block text-[10px] text-ink-500">{oneIn(odds.perPack)}</span> : null}
+              </span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+    <div className="hidden overflow-x-auto rounded-xl border border-ink-800 bg-ink-900 md:block">
       <table className="w-full min-w-[720px] text-sm">
         <thead>
           <tr className="border-b border-ink-800 text-left text-[10px] uppercase tracking-wider text-ink-400">
@@ -136,5 +161,6 @@ export function CardTable({
         </tbody>
       </table>
     </div>
+    </>
   );
 }
