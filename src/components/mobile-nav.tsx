@@ -42,7 +42,7 @@ const ITEMS: { to: string; label: string; end?: boolean; icon: React.ReactNode }
   },
   {
     to: "/about",
-    label: "Sources",
+    label: "About",
     icon: (
       <>
         <circle cx="12" cy="12" r="8.5" />
@@ -53,7 +53,7 @@ const ITEMS: { to: string; label: string; end?: boolean; icon: React.ReactNode }
 ];
 
 /** Phones get a thumb-reachable tab bar in place of the top links. */
-export function MobileNav() {
+export function MobileNav({ news = false }: { news?: boolean }) {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-ink-800 bg-ink-950/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
       {ITEMS.map((i) => (
@@ -62,9 +62,10 @@ export function MobileNav() {
           to={i.to}
           end={i.end}
           className={({ isActive }) =>
-            `flex flex-1 flex-col items-center gap-0.5 pb-1.5 pt-2 text-[10px] font-medium ${isActive ? "text-accent" : "text-ink-400"}`
+            `relative flex flex-1 flex-col items-center gap-0.5 pb-1.5 pt-2 text-[10px] font-medium ${isActive ? "text-accent" : "text-ink-400"}`
           }
         >
+          {news && i.to === "/about" ? <span className="absolute right-[calc(50%-14px)] top-1.5 h-1.5 w-1.5 rounded-full bg-accent" aria-label="New" /> : null}
           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             {i.icon}
           </svg>

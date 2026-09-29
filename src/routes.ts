@@ -10,5 +10,6 @@ export default [
   route("master", "routes/master.tsx"),
   route("china", "routes/china.tsx"),
   route("about", "routes/about.tsx"),
+  route("whats-new", "routes/whats-new.tsx"),
   route("api/psa/:cardId", "routes/api.psa.tsx"),
 ] satisfies RouteConfig;

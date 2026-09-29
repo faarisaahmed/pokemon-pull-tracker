@@ -11,6 +11,7 @@ import {
 import type { Route } from "./+types/root";
 import "./app.css";
 import { MobileNav } from "@/components/mobile-nav";
+import { useHasNewUpdates } from "@/lib/updates";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { THEME_INIT_SCRIPT } from "@/lib/themes";
 import { lastIngest } from "@/lib/queries.server";
@@ -66,6 +67,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App({ loaderData }: Route.ComponentProps) {
   const ingested = loaderData?.ingested ?? null;
+  const news = useHasNewUpdates();
   return (
     <>
       <header className="sticky top-0 z-30 border-b border-ink-800 bg-ink-950/85 backdrop-blur">
@@ -93,6 +95,10 @@ export default function App({ loaderData }: Route.ComponentProps) {
             </Link>
           </nav>
           <div className="ml-auto flex shrink-0 items-center gap-3">
+            <Link to="/whats-new" className="relative hidden text-xs text-ink-400 transition-colors hover:text-accent lg:block">
+              What's new
+              {news ? <span className="absolute -right-2 -top-0.5 h-1.5 w-1.5 rounded-full bg-accent" aria-label="New updates" /> : null}
+            </Link>
             <span className="hidden text-[11px] text-ink-400 sm:block">
               {ingested ? `Prices updated ${new Date(ingested).toLocaleDateString()}` : null}
             </span>
@@ -103,9 +109,12 @@ export default function App({ loaderData }: Route.ComponentProps) {
       <main className="mx-auto max-w-[1400px] px-4 py-6">
         <Outlet />
       </main>
-      <MobileNav />
+      <MobileNav news={news} />
       <footer className="mx-auto max-w-[1400px] px-4 pb-24 pt-4 md:pb-10 text-[11px] leading-relaxed text-ink-400">
-        A reference for prices and odds — not a collection tracker
+        <Link to="/whats-new" className="underline hover:text-ink-200">
+          What's new
+        </Link>
+        {" · "}A reference for prices and odds — not a collection tracker
         {loaderData?.shadowless ? (
           <>
             ; for tracking your own cards there's the sister site,{" "}

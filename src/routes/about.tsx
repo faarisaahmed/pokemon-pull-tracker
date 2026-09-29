@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { Card } from "@/components/ui";
 import { PULL_RATES, SPECIAL_SET_OVERRIDES } from "@/lib/pullrates";
 import { ConfidenceBadge } from "@/components/ui";
@@ -17,7 +18,11 @@ export default function AboutPage({ loaderData }: Route.ComponentProps) {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Data &amp; sources</h1>
         <p className="mt-1 text-sm text-ink-400">
-          What is in the database, where it came from, and how far to trust it.
+          What is in the database, where it came from, and how far to trust it. See also{" "}
+          <Link to="/whats-new" className="text-accent underline">
+            what's new
+          </Link>
+          .
         </p>
       </div>
 
