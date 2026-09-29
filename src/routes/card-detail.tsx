@@ -91,7 +91,7 @@ export default function CardPage({ loaderData }: Route.ComponentProps) {
               <span className="block text-ink-500">{fullDate(set.releaseDate)}</span>
             </span>
           </Link>
-          {shadowless ? (
+          {shadowless && card.region !== "ko" ? (
             <a
               href={`${shadowless}/add?q=${encodeURIComponent(`${card.name} ${card.localId}`)}${card.region === "ja" ? "&region=ja" : ""}`}
               target="_blank"

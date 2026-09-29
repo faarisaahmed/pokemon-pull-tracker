@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import type { Route } from "./+types/sets";
 import { ChipRow, DirToggle, SearchBox, Select, Toggle } from "@/components/controls";
 import { SetRowItem, SetTile } from "@/components/set-tile";
@@ -62,6 +63,13 @@ export default function SetsPage({ loaderData }: Route.ComponentProps) {
 
   return (
     <>
+      {region === "ko" ? (
+        <p className="mb-3 rounded-lg border border-ink-800 bg-ink-900 px-3 py-2 text-xs text-ink-400">
+          Korean sets are printed card for card from the Japanese ones, with the same pack and box format, so pull
+          rates are the Japanese figures. There's no open price data for Korean cards, so values aren't shown, and
+          images are of the Japanese printing.
+        </p>
+      ) : null}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Toggle
           name="region"
@@ -70,8 +78,12 @@ export default function SetsPage({ loaderData }: Route.ComponentProps) {
             { value: "all", label: "All" },
             { value: "en", label: "International" },
             { value: "ja", label: "Japan" },
+            { value: "ko", label: "Korea" },
           ]}
         />
+        <Link to="/china" className="rounded-md border border-ink-700 bg-ink-850 px-2.5 py-1.5 text-xs text-ink-300 hover:border-accent" lang="zh-CN">
+          简体中文 odds
+        </Link>
         <SearchBox name="q" placeholder="Search sets…" value={search} />
         <Select
           name="sort"
@@ -146,7 +158,7 @@ export default function SetsPage({ loaderData }: Route.ComponentProps) {
                     <span className="text-xs text-ink-500">{label.subtitle}</span>
                   ) : null}
                   <span className="text-xs text-ink-600">
-                    {section.region === "en" ? "International" : "Japan"} · {section.sets.length} sets
+                    {section.region === "en" ? "International" : section.region === "ko" ? "Korea" : "Japan"} · {section.sets.length} sets
                   </span>
                 </header>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

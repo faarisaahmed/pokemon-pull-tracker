@@ -44,7 +44,7 @@ export default function AllCardsPage({ loaderData }: Route.ComponentProps) {
       <div className="mb-5">
         <h1 className="text-2xl font-semibold tracking-tight">All cards</h1>
         <p className="mt-1 text-sm text-ink-400">
-          Every card across every English and Japanese expansion, sortable by price and rarity.
+          Every card across every English, Japanese and Korean expansion, sortable by price and rarity.
         </p>
       </div>
 
@@ -56,6 +56,7 @@ export default function AllCardsPage({ loaderData }: Route.ComponentProps) {
             { value: "all", label: "All" },
             { value: "en", label: "English" },
             { value: "ja", label: "Japanese" },
+            { value: "ko", label: "Korean" },
           ]}
         />
         <Select

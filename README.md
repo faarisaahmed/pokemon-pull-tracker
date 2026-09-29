@@ -84,6 +84,8 @@ npm run dev
 | Sets, cards, rarities, card detail | [TCGdex](https://tcgdex.dev) | The only open source covering both the English and Japanese card pools. |
 | Card images | TCGdex, falling back to TCGplayer | TCGdex only has art for ~34% of the Japanese pool; the TCGplayer product image covers the rest. |
 | Single + sealed market prices | TCGplayer via [TCGCSV](https://tcgcsv.com) | Category 3 (English) and 85 (Japanese). |
+| Korean sets | TCGdex's Korean set list, plus `KO_EXTRA` in `scripts/ingest/korean.ts` for newer sets | Korean sets are the Japanese ones card for card, so cards, images and pull rates come from the Japanese twin (`ko-<id>`). Pokémon names are translated with [PokeAPI](https://pokeapi.co)'s species names; trainers keep Japanese names. No prices. |
+| Simplified Chinese odds | Official per-product odds tables via the 52poke wiki | `src/lib/pullrates/zh.ts`, shown at `/china`. No open card lists exist, so there are no set pages. |
 | PSA graded prices | eBay sold listings | Scraped on demand per card, cached for 7 days. |
 | Pull rates | Published opening studies + per-box tallies | Curated in `src/lib/pullrates/en.ts` and `ja.ts`, every entry carrying its source and sample size. |
 

@@ -86,6 +86,9 @@ export function listSets(opts: SetListOptions = {}): SetRow[] {
   if (opts.region && opts.region !== "all") {
     where.push("region = @region");
     params.region = opts.region;
+  } else if (opts.region === "all") {
+    // Korean sets mirror Japanese ones; "All" would list every one twice.
+    where.push("region != 'ko'");
   }
   if (opts.search?.trim()) {
     where.push("(name LIKE @q COLLATE NOCASE OR local_name LIKE @q OR id LIKE @q COLLATE NOCASE)");
@@ -118,7 +121,7 @@ export function listSeries(
   const db = getDb();
   const sql =
     `SELECT series_id id, series_name name, region, COUNT(*) count, MAX(release_date) latest
-     FROM sets WHERE series_id IS NOT NULL ${region !== "all" ? "AND region = @region" : ""}
+     FROM sets WHERE series_id IS NOT NULL ${region !== "all" ? "AND region = @region" : "AND region != 'ko'"}
      GROUP BY series_id, region ORDER BY latest DESC`;
   return db.prepare(sql).all({ region }) as {
     id: string;
@@ -176,6 +179,9 @@ export function listCards(opts: CardListOptions): { cards: CardRow[]; total: num
   if (opts.region && opts.region !== "all") {
     where.push("region = @region");
     params.region = opts.region;
+  } else if (opts.region === "all") {
+    // Korean sets mirror Japanese ones; "All" would list every one twice.
+    where.push("region != 'ko'");
   }
   if (opts.rarityKey && opts.rarityKey !== "all") {
     where.push("rarity_key = @rarityKey");
@@ -329,7 +335,7 @@ export function chaseRows(rarityKey: string, region: Region | "all"): ChaseRow[]
               ROUND(MAX(c.market_price), 2) max_price
        FROM cards c
        WHERE c.rarity_key = @rarityKey AND ${NOT_SUBSET_COPY.replace("id", "c.id")}
-         ${region !== "all" ? "AND c.region = @region" : ""}
+         ${region !== "all" ? "AND c.region = @region" : "AND c.region != 'ko'"}
        GROUP BY c.set_id`,
     )
     .all({ rarityKey, region }) as {
@@ -400,7 +406,7 @@ export function availableRarities(region: Region | "all") {
       `SELECT rarity_key, COUNT(*) cards, COUNT(DISTINCT set_id) sets, MIN(rarity_rank) rank
        FROM cards
        WHERE rarity_key IS NOT NULL AND rarity_key NOT IN ('unknown', 'promo') AND ${NOT_SUBSET_COPY}
-         ${region !== "all" ? "AND region = @region" : ""}
+         ${region !== "all" ? "AND region = @region" : "AND region != 'ko'"}
        GROUP BY rarity_key ORDER BY rank DESC`,
     )
     .all({ region }) as { rarity_key: string; cards: number; sets: number; rank: number }[];
@@ -421,7 +427,9 @@ export function globalStats() {
       `SELECT (SELECT COUNT(*) FROM sets WHERE region='en') en_sets,
               (SELECT COUNT(*) FROM sets WHERE region='ja') ja_sets,
               (SELECT COUNT(*) FROM cards WHERE region='en' AND ${NOT_SUBSET_COPY}) en_cards,
-              (SELECT COUNT(*) FROM cards WHERE region='ja' AND ${NOT_SUBSET_COPY}) ja_cards`,
+              (SELECT COUNT(*) FROM cards WHERE region='ja' AND ${NOT_SUBSET_COPY}) ja_cards,
+              (SELECT COUNT(*) FROM sets WHERE region='ko') ko_sets,
+              (SELECT COUNT(*) FROM cards WHERE region='ko') ko_cards`,
     )
-    .get() as { en_sets: number; ja_sets: number; en_cards: number; ja_cards: number };
+    .get() as { en_sets: number; ja_sets: number; en_cards: number; ja_cards: number; ko_sets: number; ko_cards: number };
 }

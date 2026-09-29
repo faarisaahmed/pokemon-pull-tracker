@@ -2,15 +2,17 @@ import { Link } from "react-router";
 import { rarityMeta } from "@/lib/rarity";
 import type { Confidence, Region } from "@/lib/types";
 
+const REGION_BADGE: Record<Region, { label: string; tone: string }> = {
+  en: { label: "EN", tone: "bg-en/15 text-en" },
+  ja: { label: "JP", tone: "bg-jp/15 text-jp" },
+  ko: { label: "KR", tone: "bg-kr/15 text-kr" },
+};
+
 export function RegionBadge({ region }: { region: Region }) {
-  const en = region === "en";
+  const b = REGION_BADGE[region];
   return (
-    <span
-      className={`inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${
-        en ? "bg-en/15 text-en" : "bg-jp/15 text-jp"
-      }`}
-    >
-      {en ? "EN" : "JP"}
+    <span className={`inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${b.tone}`}>
+      {b.label}
     </span>
   );
 }

@@ -1,4 +1,7 @@
-export type Region = "en" | "ja";
+/** Korean ("ko") sets mirror Japanese ones and have no market prices; see lib/korean.ts. */
+export type Region = "en" | "ja" | "ko";
+/** Regions with TCGplayer data, which the ingest pulls directly. */
+export type PricedRegion = "en" | "ja";
 
 export type SealedKind = "pack" | "bundle" | "box" | "etb" | "collection";
 
@@ -149,6 +152,8 @@ export interface PullRateEntry {
   godPack?: GodPack;
   confidence: Confidence;
   source: { name: string; url: string; sampleSize?: number };
+  /** Shown with the source, e.g. that Korean odds come from the Japanese release. */
+  note?: string;
   /**
    * The sealed unit "per box" figures are quoted against, for sets sold
    * without a booster box. Defaults to a booster box.

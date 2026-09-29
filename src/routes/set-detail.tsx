@@ -255,6 +255,7 @@ export default function SetPage({ loaderData }: Route.ComponentProps) {
               </a>
               {entry.source.sampleSize ? ` · ${entry.source.sampleSize.toLocaleString()} packs` : ""}
             </span>
+            {entry.note ? <span className="w-full">{entry.note}</span> : null}
           </footer>
         </DetailsPanel>
 

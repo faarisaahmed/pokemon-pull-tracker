@@ -22,12 +22,14 @@ export default function AboutPage({ loaderData }: Route.ComponentProps) {
       </div>
 
       <Card title="Coverage">
-        <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-b-xl bg-ink-800 sm:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-b-xl bg-ink-800 sm:grid-cols-3">
           {[
             ["English sets", stats.en_sets],
             ["Japanese sets", stats.ja_sets],
+            ["Korean sets", stats.ko_sets],
             ["English cards", stats.en_cards],
             ["Japanese cards", stats.ja_cards],
+            ["Korean cards", stats.ko_cards],
           ].map(([label, value]) => (
             <div key={label as string} className="bg-ink-900 px-4 py-3">
               <dt className="text-[10px] uppercase tracking-wider text-ink-400">{label}</dt>
@@ -45,6 +47,24 @@ export default function AboutPage({ loaderData }: Route.ComponentProps) {
               TCGdex
             </a>
             , which is the only open source covering both the English and Japanese card pools.
+          </p>
+          <p>
+            <strong className="text-ink-100">Korean sets</strong> are printed card for card from the Japanese ones,
+            with the same pack and box sizes (per Pokémon Korea's product pages), so they reuse the Japanese card
+            lists, images and pull rates. Names are translated through the Pokédex (
+            <a href="https://pokeapi.co" target="_blank" rel="noreferrer" className="text-accent underline">
+              PokeAPI
+            </a>
+            ); trainer and energy cards keep their Japanese names. No open marketplace covers Korean cards, so they
+            carry no prices.
+          </p>
+          <p>
+            <strong className="text-ink-100">Simplified Chinese</strong> boosters are separate sets with no open
+            card lists. Their{" "}
+            <a href="/china" className="text-accent underline">
+              odds page
+            </a>{" "}
+            uses the official odds table printed for each product.
           </p>
           <p>
             <strong className="text-ink-100">Market prices</strong>, for singles and for sealed

@@ -1,4 +1,5 @@
 import type { BoxUnit, Confidence, GodPack, PullRateEntry, Region, ResolvedCardOdds } from "../types";
+import { jaTwinId } from "../korean";
 import { pullSetOf } from "../subsets";
 import { GOD_PACKS, PULL_RATES, SPECIAL_SET_OVERRIDES } from "./data";
 
@@ -38,6 +39,17 @@ const GOD_PACK_BY_KEY = new Map(GOD_PACKS.map((g) => [`${g.region}:${g.key}`, g.
  * parent, whose packs its cards come out of.
  */
 export function entryFor(region: Region, setId: string, releaseDate: string | null): PullRateEntry {
+  if (region === "ko") {
+    // Korean boxes match their Japanese twins pack for pack (Pokémon Korea's
+    // product pages list the same pack and box sizes), so the Japanese
+    // measurements apply. Nobody publishes Korean-only tallies.
+    const ja = entryFor("ja", jaTwinId(setId), releaseDate);
+    return {
+      ...ja,
+      region: "ko",
+      note: "Korean boxes use the same pack and box format as the Japanese release, so these are the Japanese figures.",
+    };
+  }
   const id = pullSetOf(setId);
   const entry =
     BY_KEY.get(`${region}:${id}`) ??

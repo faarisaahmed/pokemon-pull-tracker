@@ -53,7 +53,7 @@ export function loader({ request }: Route.LoaderArgs) {
   const sp = Object.fromEntries(new URL(request.url).searchParams) as Record<string, string>;
   const query = sp.p ?? "";
   const filters: MasterFilters = {
-    region: sp.region === "ja" ? "ja" : "en",
+    region: sp.region === "ja" || sp.region === "ko" ? sp.region : "en",
     repeats: sp.repeats === "one" ? "one" : "all",
     eras: (sp.era ?? "").split(",").filter(Boolean),
     maxPack: positive(sp.max),
@@ -111,6 +111,7 @@ export default function MasterPage({ loaderData }: Route.ComponentProps) {
           options={[
             { value: "en", label: "English" },
             { value: "ja", label: "Japanese" },
+            { value: "ko", label: "Korean" },
           ]}
         />
       </div>
@@ -159,7 +160,7 @@ export default function MasterPage({ loaderData }: Route.ComponentProps) {
                 <span key={a.dexId}>
                   {i ? ", " : ""}
                   <Link
-                    to={`?p=${encodeURIComponent(a.name)}${filters.region === "ja" ? "&region=ja" : ""}`}
+                    to={`?p=${encodeURIComponent(a.name)}${filters.region !== "en" ? `&region=${filters.region}` : ""}`}
                     className="text-accent underline"
                   >
                     {a.name}

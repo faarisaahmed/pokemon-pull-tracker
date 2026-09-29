@@ -1,10 +1,11 @@
 import { getDb } from "../../src/lib/db.server";
 import { isHitRarity, rarityMeta } from "../../src/lib/rarity";
 import { cardOdds, entryFor } from "../../src/lib/pullrates";
-import type { Region, SealedKind } from "../../src/lib/types";
+import type { PricedRegion as Region, SealedKind } from "../../src/lib/types";
 import { mapLimit, progress } from "./http";
 import * as dex from "./tcgdex";
 import * as csv from "./tcgcsv";
+import { ingestKorean } from "./korean";
 import { pairByName, productCardName } from "./names";
 import { resolveRarity } from "./rarity-rules";
 import {
@@ -592,6 +593,11 @@ function computeAggregates() {
       tile_image   = (SELECT image FROM cards WHERE cards.set_id = sets.id AND image IS NOT NULL
                       ORDER BY market_price DESC LIMIT 1)
   `);
+  // Korean cards carry no prices, so their tiles borrow the Japanese twin's.
+  db.exec(`
+    UPDATE sets SET tile_image = (SELECT j.tile_image FROM sets j WHERE j.id = substr(sets.id, 4))
+    WHERE region = 'ko'
+  `);
 
   const setRows = db
     .prepare(`SELECT id, region, release_date FROM sets`)
@@ -710,11 +716,15 @@ function assertPlausible(stats: Record<string, number>) {
 }
 
 async function main() {
-  const only = process.argv.find((a) => a.startsWith("--region="))?.split("=")[1] as Region | undefined;
+  const only = process.argv.find((a) => a.startsWith("--region="))?.split("=")[1] as Region | "ko" | undefined;
   const t0 = Date.now();
   for (const region of REGIONS) {
     if (only && region !== only) continue;
     await ingestRegion(region);
+  }
+  if (!only || only === "ko") {
+    // Korean sets are a bonus built on the Japanese ones; never fail a deploy over them.
+    await ingestKorean().catch((err) => console.warn(`  WARNING: Korean sets skipped (${String(err)})`));
   }
   computeAggregates();
   buildSpecies();
