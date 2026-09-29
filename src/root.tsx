@@ -18,13 +18,14 @@ export function loader() {
   return {
     ingested: lastIngest(),
     // The sister collection tracker, when this deployment knows its address.
-    holovault: process.env.HOLOVAULT_URL?.replace(/\/$/, "") || null,
+    // HOLOVAULT_URL is the setting's name from before Shadowless was renamed.
+    shadowless: (process.env.SHADOWLESS_URL || process.env.HOLOVAULT_URL)?.replace(/\/$/, "") || null,
   };
 }
 
-/** Holovault's address, or null when it isn't configured (links stay hidden). */
-export function useHolovaultUrl(): string | null {
-  return useRouteLoaderData<typeof loader>("root")?.holovault ?? null;
+/** Shadowless's address, or null when it isn't configured (links stay hidden). */
+export function useShadowlessUrl(): string | null {
+  return useRouteLoaderData<typeof loader>("root")?.shadowless ?? null;
 }
 
 export const links: Route.LinksFunction = () => [
@@ -103,11 +104,11 @@ export default function App({ loaderData }: Route.ComponentProps) {
       </main>
       <footer className="mx-auto max-w-[1400px] px-4 pb-10 pt-4 text-[11px] leading-relaxed text-ink-400">
         A reference for prices and odds — not a collection tracker
-        {loaderData?.holovault ? (
+        {loaderData?.shadowless ? (
           <>
             ; for tracking your own cards there's the sister site,{" "}
-            <a href={loaderData.holovault} className="underline hover:text-ink-200">
-              Holovault
+            <a href={loaderData.shadowless} className="underline hover:text-ink-200">
+              Shadowless
             </a>
           </>
         ) : null}
