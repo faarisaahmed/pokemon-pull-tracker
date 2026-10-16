@@ -9,7 +9,8 @@ import { boxUnit, entryFor, tierOdds } from "@/lib/pullrates";
 import { rarityMeta } from "@/lib/rarity";
 import { seriesLabel } from "@/lib/series";
 import { STANDALONE_SUBSETS } from "@/lib/subsets";
-import { useShadowlessUrl } from "@/root";
+import { useAffiliate, useShadowlessUrl } from "@/root";
+import { shopLink } from "@/lib/affiliate";
 import {
   getSet,
   listCards,
@@ -79,6 +80,7 @@ export default function SetPage({ loaderData }: Route.ComponentProps) {
     loaderData;
   const box = boxUnit(entry);
   const shadowless = useShadowlessUrl();
+  const affiliate = useAffiliate();
   // Every product with a known pack count, cheapest per pack first.
   const perPack = sealed
     .filter((s) => s.packCount && s.market != null)
@@ -314,7 +316,7 @@ export default function SetPage({ loaderData }: Route.ComponentProps) {
                   <div className="tnum shrink-0 text-sm font-semibold">{usd(s.market)}</div>
                   {s.url ? (
                     <a
-                      href={s.url}
+                      href={shopLink(s.url, affiliate)}
                       target="_blank"
                       rel="noreferrer"
                       className="shrink-0 text-[10px] text-ink-500 underline hover:text-accent"

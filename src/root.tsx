@@ -15,6 +15,7 @@ import { useHasNewUpdates } from "@/lib/updates";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { THEME_INIT_SCRIPT } from "@/lib/themes";
 import { lastIngest } from "@/lib/queries.server";
+import { affiliateIdsFromEnv, hasAffiliate, NO_AFFILIATE, type AffiliateIds } from "@/lib/affiliate";
 
 export function loader() {
   return {
@@ -22,12 +23,18 @@ export function loader() {
     // The sister collection tracker, when this deployment knows its address.
     // HOLOVAULT_URL is the setting's name from before Shadowless was renamed.
     shadowless: (process.env.SHADOWLESS_URL || process.env.HOLOVAULT_URL)?.replace(/\/$/, "") || null,
+    affiliate: affiliateIdsFromEnv(),
   };
 }
 
 /** Shadowless's address, or null when it isn't configured (links stay hidden). */
 export function useShadowlessUrl(): string | null {
   return useRouteLoaderData<typeof loader>("root")?.shadowless ?? null;
+}
+
+/** Affiliate settings for outbound shop links (all null when not configured). */
+export function useAffiliate(): AffiliateIds {
+  return useRouteLoaderData<typeof loader>("root")?.affiliate ?? NO_AFFILIATE;
 }
 
 export const links: Route.LinksFunction = () => [
@@ -131,6 +138,12 @@ export default function App({ loaderData }: Route.ComponentProps) {
         Not produced by, endorsed by, or affiliated with Nintendo, Creatures Inc., GAME FREAK inc.,
         The Pokémon Company, TCGplayer or eBay. Pokémon and all related names are trademarks of
         their respective owners.
+        {loaderData?.affiliate && hasAffiliate(loaderData.affiliate) ? (
+          <>
+            {" "}Some TCGplayer and eBay links are affiliate links: buying through them may earn
+            Ripwise a commission, at no extra cost to you.
+          </>
+        ) : null}
       </footer>
     </>
   );

@@ -31,5 +31,7 @@ software is for.
 
 ## Intended use
 
-A personal, non-commercial price and probability reference. Running it with advertising, affiliate
-links or any other revenue attached materially changes the position described above.
+A price and probability reference. Outbound TCGplayer and eBay links can optionally carry affiliate
+tags (`TCGPLAYER_AFFILIATE_URL`, `EBAY_CAMPAIGN_ID`); they are off unless a deployment sets them, and
+when they are on the site footer discloses it. Being in an affiliate programme is not an endorsement
+by, or affiliation with, TCGplayer or eBay.

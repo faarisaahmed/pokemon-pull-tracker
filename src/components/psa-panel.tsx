@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { usd } from "@/lib/format";
+import { ebayLink } from "@/lib/affiliate";
+import { useAffiliate } from "@/root";
 
 interface Grade {
   grade: string;
@@ -21,6 +23,7 @@ interface Payload {
 
 export function PsaPanel({ cardId, rawPrice }: { cardId: string; rawPrice: number | null }) {
   const [state, setState] = useState<{ for: string; data: Payload | null } | null>(null);
+  const affiliate = useAffiliate();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -62,7 +65,7 @@ export function PsaPanel({ cardId, rawPrice }: { cardId: string; rawPrice: numbe
         </p>
         {data.note ? <p className="mt-1.5 text-[11px] leading-relaxed text-ink-500">{data.note}</p> : null}
         <a
-          href={data.searchUrl}
+          href={ebayLink(data.searchUrl, affiliate)}
           target="_blank"
           rel="noreferrer"
           className="mt-2.5 inline-block text-xs text-accent underline"
@@ -109,7 +112,7 @@ export function PsaPanel({ cardId, rawPrice }: { cardId: string; rawPrice: numbe
           From eBay sold listings{data.cached ? " (cached)" : ""} ·{" "}
           {new Date(data.fetchedAt).toLocaleDateString()}
         </span>
-        <a href={data.searchUrl} target="_blank" rel="noreferrer" className="underline hover:text-accent">
+        <a href={ebayLink(data.searchUrl, affiliate)} target="_blank" rel="noreferrer" className="underline hover:text-accent">
           view on eBay
         </a>
       </footer>

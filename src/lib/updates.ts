@@ -15,6 +15,13 @@ export interface Update {
 
 export const UPDATES: Update[] = [
   {
+    date: "2026-10-16",
+    title: "Buy a card in one tap",
+    items: [
+      "Every card page has a Buy on TCGplayer button for its cheapest listed printing.",
+    ],
+  },
+  {
     date: "2026-09-29",
     title: "Korean sets and Chinese odds",
     items: [

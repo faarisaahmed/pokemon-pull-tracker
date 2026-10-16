@@ -17,3 +17,8 @@ services:
       # Optional: route eBay requests through a proxy so PSA comps work.
       # - key: PPT_SCRAPER_URL
       #   sync: false
+      # Optional: affiliate tags on outbound shop links (off when unset).
+      # - key: TCGPLAYER_AFFILIATE_URL   # e.g. https://tcgplayer.pxf.io/c/1234567/1830156/21018
+      #   sync: false
+      # - key: EBAY_CAMPAIGN_ID          # eBay Partner Network campaign ID
+      #   sync: false

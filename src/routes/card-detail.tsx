@@ -9,7 +9,8 @@ import { fetchCardDetail } from "@/lib/tcgdex-live.server";
 import { formatLegality } from "@/lib/tcgdex";
 import { boxUnit } from "@/lib/pullrates";
 import { dexIdOf, pullSetOf } from "@/lib/subsets";
-import { useShadowlessUrl } from "@/root";
+import { useAffiliate, useShadowlessUrl } from "@/root";
+import { tcgplayerLink } from "@/lib/affiliate";
 import { cardPrices, getCard, getSet, listCards, oddsForCard } from "@/lib/queries.server";
 
 export async function loader({ params }: Route.LoaderArgs) {
@@ -46,6 +47,11 @@ export default function CardPage({ loaderData }: Route.ComponentProps) {
   const primaryType = detail?.types?.[0];
   const box = boxUnit(entry);
   const shadowless = useShadowlessUrl();
+  const affiliate = useAffiliate();
+  // The printing a buyer most likely wants: the one with a listing and the lowest market price.
+  const buyable = prices
+    .filter((p) => p.tcgplayerProductId)
+    .sort((a, b) => (a.market ?? Infinity) - (b.market ?? Infinity))[0];
 
   return (
     <>
@@ -91,6 +97,16 @@ export default function CardPage({ loaderData }: Route.ComponentProps) {
               <span className="block text-ink-500">{fullDate(set.releaseDate)}</span>
             </span>
           </Link>
+          {buyable ? (
+            <a
+              href={tcgplayerLink(`https://www.tcgplayer.com/product/${buyable.tcgplayerProductId}`, affiliate)}
+              target="_blank"
+              rel="noreferrer sponsored"
+              className="block rounded-md border border-accent bg-accent/10 px-3 py-2 text-center text-sm font-medium text-accent hover:bg-accent/20"
+            >
+              Buy on TCGplayer{buyable.market != null ? ` from ${usd(buyable.market)}` : ""} ↗
+            </a>
+          ) : null}
           {shadowless && card.region !== "ko" ? (
             <a
               href={`${shadowless}/add?q=${encodeURIComponent(`${card.name} ${card.localId}`)}${card.region === "ja" ? "&region=ja" : ""}`}
@@ -273,7 +289,7 @@ export default function CardPage({ loaderData }: Route.ComponentProps) {
                       <td className="px-4 py-1.5">
                         {p.tcgplayerProductId ? (
                           <a
-                            href={`https://www.tcgplayer.com/product/${p.tcgplayerProductId}`}
+                            href={tcgplayerLink(`https://www.tcgplayer.com/product/${p.tcgplayerProductId}`, affiliate)}
                             target="_blank"
                             rel="noreferrer"
                             className="hover:text-accent hover:underline"
