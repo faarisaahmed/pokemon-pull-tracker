@@ -15,10 +15,13 @@ import { useHasNewUpdates } from "@/lib/updates";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { THEME_INIT_SCRIPT } from "@/lib/themes";
 import { lastIngest } from "@/lib/queries.server";
+import { siteOrigin } from "@/lib/origin.server";
+import { pageMeta } from "@/lib/seo";
 import { affiliateIdsFromEnv, hasAffiliate, NO_AFFILIATE, type AffiliateIds } from "@/lib/affiliate";
 
-export function loader() {
+export function loader({ request }: Route.LoaderArgs) {
   return {
+    origin: siteOrigin(request),
     ingested: lastIngest(),
     // The sister collection tracker, when this deployment knows its address.
     // HOLOVAULT_URL is the setting's name from before Shadowless was renamed.
@@ -43,14 +46,14 @@ export const links: Route.LinksFunction = () => [
   { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
 ];
 
-export const meta: Route.MetaFunction = () => [
-  { title: "Ripwise — know the odds before you rip" },
-  {
-    name: "description",
-    content:
-      "Ripwise: pull rates, prices and what to open for every English and Japanese Pokémon TCG expansion — per-card odds, pack EV, cost per hit, sealed prices and a pack simulator.",
-  },
-];
+export const meta: Route.MetaFunction = ({ loaderData, location }) =>
+  pageMeta({
+    title: "Ripwise — Pokémon TCG pull rates, prices & what to open",
+    description:
+      "Pull rates, prices and what to open for every English and Japanese Pokémon TCG expansion — per-card odds, pack EV, cost per hit, sealed prices and a pack simulator.",
+    origin: loaderData?.origin,
+    path: location.pathname,
+  });
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (

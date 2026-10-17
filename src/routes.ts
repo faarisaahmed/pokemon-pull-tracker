@@ -12,4 +12,6 @@ export default [
   route("about", "routes/about.tsx"),
   route("whats-new", "routes/whats-new.tsx"),
   route("api/psa/:cardId", "routes/api.psa.tsx"),
+  route("sitemap.xml", "routes/sitemap.tsx"),
+  route("robots.txt", "routes/robots.tsx"),
 ] satisfies RouteConfig;

@@ -16,6 +16,13 @@ export interface Update {
 export const UPDATES: Update[] = [
   {
     date: "2026-10-16",
+    title: "Foil is the new default look",
+    items: [
+      "The teal Foil palette is now the default. If you picked a palette yourself, you keep it; the others are still in the palette menu.",
+    ],
+  },
+  {
+    date: "2026-10-16",
     title: "Buy a card in one tap",
     items: [
       "Every card page has a Buy on TCGplayer button for its cheapest listed printing.",

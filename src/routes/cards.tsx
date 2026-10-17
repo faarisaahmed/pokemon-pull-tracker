@@ -1,5 +1,6 @@
 import { CardTable } from "@/components/card-grid";
 import type { Route } from "./+types/cards";
+import { originFrom, pageMeta } from "@/lib/seo";
 import { DirToggle, Pager, SearchBox, Select, Toggle } from "@/components/controls";
 import { RARITIES } from "@/lib/rarity";
 import { listCards } from "@/lib/queries.server";
@@ -7,6 +8,15 @@ import { CARD_SORTS, resolveDir, type CardSort } from "@/lib/sorting";
 import type { Region } from "@/lib/types";
 
 const PAGE_SIZE = 100;
+
+export const meta: Route.MetaFunction = ({ matches, location }) =>
+  pageMeta({
+    title: "Pokémon card prices — every card, sorted by value | Ripwise",
+    description:
+      "Search and sort every English, Japanese and Korean Pokémon TCG card by price, rarity and set, with TCGplayer market prices and pull odds.",
+    origin: originFrom(matches),
+    path: location.pathname,
+  });
 
 export function loader({ request }: Route.LoaderArgs) {
   const sp = Object.fromEntries(new URL(request.url).searchParams) as Record<string, string>;

@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import type { Route } from "./+types/chase";
+import { originFrom, pageMeta } from "@/lib/seo";
 import { ChipRow, DirToggle, MultiChipRow, Select, Toggle } from "@/components/controls";
 import { ConfidenceBadge, RarityChip, RegionBadge } from "@/components/ui";
 import { oneIn, pct, shortDate, usd } from "@/lib/format";
@@ -34,6 +35,15 @@ function valueOf(row: ChaseRow, key: string): number | null {
   if (key === "packPrice") return row.packPrice;
   return (row as unknown as Record<string, number | null>)[key] ?? null;
 }
+
+export const meta: Route.MetaFunction = ({ matches, location }) =>
+  pageMeta({
+    title: "Which Pokémon set to open? Cost per hit by rarity | Ripwise",
+    description:
+      "Every Pokémon TCG set ranked by what it costs, on average, to pull a card of the rarity you're chasing — plus pack odds, card values and god pack rates.",
+    origin: originFrom(matches),
+    path: location.pathname,
+  });
 
 export function loader({ request }: Route.LoaderArgs) {
   const sp = Object.fromEntries(new URL(request.url).searchParams) as Record<string, string>;

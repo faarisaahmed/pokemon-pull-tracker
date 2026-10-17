@@ -11,7 +11,29 @@ import { boxUnit } from "@/lib/pullrates";
 import { dexIdOf, pullSetOf } from "@/lib/subsets";
 import { useAffiliate, useShadowlessUrl } from "@/root";
 import { tcgplayerLink } from "@/lib/affiliate";
+import { originFrom, pageMeta } from "@/lib/seo";
 import { cardPrices, getCard, getSet, listCards, oddsForCard } from "@/lib/queries.server";
+
+export const meta: Route.MetaFunction = ({ loaderData, matches, location }) => {
+  if (!loaderData) return [{ title: "Card not found — Ripwise" }];
+  const { card, set, odds } = loaderData;
+  const number = /^\d+$/.test(card.localId) && set.cardCountOfficial ? `${card.localId}/${set.cardCountOfficial}` : card.localId;
+  const lang = card.region === "ja" ? " Japanese" : card.region === "ko" ? " Korean" : "";
+  const facts = [
+    card.marketPrice != null ? `worth ${usd(card.marketPrice)} on TCGplayer` : null,
+    odds ? `about 1 in ${Math.round(odds.packsPerCopy).toLocaleString("en-US")} packs to pull` : null,
+  ].filter(Boolean);
+  return pageMeta({
+    title: `${card.name} ${number} ${set.name}${lang} — price & pull rate | Ripwise`,
+    description:
+      `${card.name} (${set.name}${lang}, #${card.localId})${facts.length ? ` is ${facts.join(", ")}` : ""}. ` +
+      `Prices for every printing, PSA graded prices, and the odds of pulling it per pack and per box.`,
+    origin: originFrom(matches),
+    path: location.pathname,
+    // Link previews handle PNG more widely than WebP; TCGdex serves both.
+    image: card.image?.replace(/\.webp$/, ".png"),
+  });
+};
 
 export async function loader({ params }: Route.LoaderArgs) {
   const card = getCard(decodeURIComponent(params.cardId));

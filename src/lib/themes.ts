@@ -48,7 +48,7 @@ export const THEMES: Theme[] = [
   },
 ];
 
-export const DEFAULT_THEME = "violet";
+export const DEFAULT_THEME = "foil";
 
 /**
  * Applied before paint so a stored choice never flashes the default first.

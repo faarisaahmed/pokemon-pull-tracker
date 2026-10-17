@@ -4,6 +4,16 @@ import { PULL_RATES, SPECIAL_SET_OVERRIDES } from "@/lib/pullrates";
 import { ConfidenceBadge } from "@/components/ui";
 import { globalStats, lastIngest } from "@/lib/queries.server";
 import type { Route } from "./+types/about";
+import { originFrom, pageMeta } from "@/lib/seo";
+
+export const meta: Route.MetaFunction = ({ matches, location }) =>
+  pageMeta({
+    title: "About Ripwise — where the prices and pull rates come from",
+    description:
+      "How Ripwise works: card data from TCGdex, TCGplayer market prices, PSA graded prices from eBay, and pull rates compiled from published pack-opening studies.",
+    origin: originFrom(matches),
+    path: location.pathname,
+  });
 
 export function loader() {
   return { stats: globalStats(), ingested: lastIngest() };

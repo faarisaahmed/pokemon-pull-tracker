@@ -11,6 +11,7 @@ import { seriesLabel } from "@/lib/series";
 import { STANDALONE_SUBSETS } from "@/lib/subsets";
 import { useAffiliate, useShadowlessUrl } from "@/root";
 import { shopLink } from "@/lib/affiliate";
+import { originFrom, pageMeta } from "@/lib/seo";
 import {
   getSet,
   listCards,
@@ -28,6 +29,26 @@ const KIND_LABEL: Record<string, string> = {
   box: "Booster box",
   etb: "Elite Trainer Box",
   collection: "Collection / tin",
+};
+
+export const meta: Route.MetaFunction = ({ loaderData, matches, location }) => {
+  if (!loaderData) return [{ title: "Set not found — Ripwise" }];
+  const { set } = loaderData;
+  const lang = set.region === "ja" ? " (Japanese)" : set.region === "ko" ? " (Korean)" : "";
+  const facts = [
+    set.packPrice != null ? `packs from ${usd(set.packPrice)}` : null,
+    set.expectedPackValue != null ? `${usd(set.expectedPackValue)} expected value per pack` : null,
+    set.setValue != null ? `set value ${usd(set.setValue, { compact: true })}` : null,
+  ].filter(Boolean);
+  return pageMeta({
+    title: `${set.name}${lang} pull rates, card list & prices | Ripwise`,
+    description:
+      `${set.name}${lang}: pull rates for every rarity, all ${set.cardCountTotal} cards with prices` +
+      `${facts.length ? `, ${facts.join(", ")}` : ""}. See what to chase and whether a pack is worth opening.`,
+    origin: originFrom(matches),
+    path: location.pathname,
+    image: set.logo,
+  });
 };
 
 export function loader({ params, request }: Route.LoaderArgs) {
