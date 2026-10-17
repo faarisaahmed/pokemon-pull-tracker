@@ -59,7 +59,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         {/* TCGplayer affiliate program (Impact) site ownership check. */}
-        <meta name="impact-site-verification" {...{ value: "7e6fc6f9-1938-4d7e-ac16-80fa0cbfb3c1" }} />
+        <meta name="impact-site-verification" content="7e6fc6f9-1938-4d7e-ac16-80fa0cbfb3c1" {...{ value: "7e6fc6f9-1938-4d7e-ac16-80fa0cbfb3c1" }} />
         <Meta />
         <Links />
         {/* Applies the stored palette before first paint. */}
