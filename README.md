@@ -44,7 +44,7 @@ to hit a given card.
   their own. See `src/lib/subsets.ts`.
 - **Card page** — full card detail (HP, type, abilities and attacks with energy costs, weakness,
   resistance, retreat, illustrator, Pokédex number, regulation mark, format legality), market price
-  per printing, PSA graded sold comps, the odds of pulling that specific card with the arithmetic
+  per printing, PSA graded prices, the odds of pulling that specific card with the arithmetic
   shown and the source cited, and the other cards sharing its rarity.
 
 Card detail beyond what the grid needs (attacks, HP, weaknesses) is fetched from TCGdex when a card
@@ -86,7 +86,7 @@ npm run dev
 | Single + sealed market prices | TCGplayer via [TCGCSV](https://tcgcsv.com) | Category 3 (English) and 85 (Japanese). |
 | Korean sets | TCGdex's Korean set list, plus `KO_EXTRA` in `scripts/ingest/korean.ts` for newer sets | Korean sets are the Japanese ones card for card, so cards, images and pull rates come from the Japanese twin (`ko-<id>`). Pokémon names are translated with [PokeAPI](https://pokeapi.co)'s species names; trainers keep Japanese names. No prices. |
 | Simplified Chinese odds | Official per-product odds tables via the 52poke wiki | `src/lib/pullrates/zh.ts`, shown at `/china`. No open card lists exist, so there are no set pages. |
-| PSA graded prices | eBay sold listings | Scraped on demand per card, cached for 7 days. |
+| PSA graded prices | eBay Browse API (current listings) | Looked up on demand per card, cached for 7 days. |
 | Pull rates | Published opening studies + per-box tallies | Curated in `src/lib/pullrates/en.ts` and `ja.ts`, every entry carrying its source and sample size. |
 
 ### What is excluded
@@ -137,27 +137,22 @@ number everywhere it appears. Adding a set: append a `scope: "set"` entry to `PU
 
 ## PSA prices
 
-> **eBay's User Agreement prohibits automated access to the site.** The scraper in `src/lib/ebay/`
-> is provided as code; whether to run it is your call and your risk. It is rate-limited to one
-> request every 1.5 seconds and caches for a week, but that does not make it permitted. If you want
-> graded prices without this trade-off, use eBay's official Marketplace Insights API or a PSA data
-> licence instead.
-
-eBay blocks automated requests from most servers — a bare request from a datacentre IP gets a 403
-on every path, including the homepage. The app degrades gracefully (the card page says so and links
-you to the search) but to actually get comps you need either a residential connection or a proxy:
+Graded prices come from eBay's official [Browse API](https://developer.ebay.com/api-docs/buy/browse/overview.html),
+not from eBay's web pages, which its User Agreement does not allow automated access to. Create an
+app at developer.ebay.com and set its production keyset:
 
 ```bash
-export PPT_SCRAPER_URL='https://api.scraperapi.com?api_key=YOUR_KEY&url={url}'
+export EBAY_CLIENT_ID=...
+export EBAY_CLIENT_SECRET=...
 npm run psa:warm -- --limit=200 --min-price=50
 ```
 
-`{url}` is replaced with the URL-encoded eBay search. The same shape works for ScrapingBee, Zyte,
-Bright Data and similar. Requests are serialised with a 1.5s gap regardless.
+The Browse API returns current listings, not sold ones, so the panel shows asking prices: the median
+and range of fixed-price US listings per PSA grade, with lots, sealed product and outliers dropped.
+Each card links to eBay's sold-listings search for actual sales. Without the keys nothing is
+requested from eBay; the panel says graded prices aren't available and keeps the link.
 
-The parser is covered by `tests/ebay-psa.test.ts` against fixtures of both markups eBay currently
-serves. Those tests will keep passing if eBay changes its class names, so check a real response
-before assuming the scraper is healthy.
+The title filter and summary are covered by `tests/ebay-psa.test.ts`.
 
 ## Scripts
 
@@ -165,8 +160,8 @@ before assuming the scraper is healthy.
 | --- | --- |
 | `npm run ingest` | Rebuilds `data/pokemon.db` from TCGdex + TCGCSV. Safe to re-run; it upserts. |
 | `npm run ingest -- --region=en` | Ingests one region only. |
-| `npm run psa:warm` | Bulk-fetches PSA comps for the most valuable cards. |
-| `npm test` | Runs the eBay parser tests. |
+| `npm run psa:warm` | Bulk-fetches PSA prices for the most valuable cards. |
+| `npm test` | Runs the unit tests. |
 | `npm run typecheck` | Generates route types, then runs `tsc`. |
 | `npm run dev` / `build` / `start` | React Router dev server, production build, production server. |
 

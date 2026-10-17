@@ -133,7 +133,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
           </>
         ) : null}
         . Card data from TCGdex, market
-        prices from TCGplayer via TCGCSV, graded comps from eBay sold listings. Pull rates are
+        prices from TCGplayer via TCGCSV, graded prices from current eBay listings. Pull rates are
         compiled from published pack-opening studies and per-box guarantees; every figure links to
         its source.
         <br />

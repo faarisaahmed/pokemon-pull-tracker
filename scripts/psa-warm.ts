@@ -1,15 +1,15 @@
 /**
- * Bulk-warms the PSA cache. Scraping all 29k cards is neither realistic nor
- * polite, so this walks the most valuable cards first — those are the ones
- * anyone actually wants graded comps for — and stops as soon as eBay starts
- * refusing, rather than hammering a blocked endpoint.
+ * Bulk-warms the PSA cache from eBay's Browse API. The API allows a few
+ * thousand calls a day, so this walks the most valuable cards first — those
+ * are the ones anyone actually wants graded prices for — and stops as soon as
+ * eBay starts refusing.
  *
  *   npx tsx scripts/psa-warm.ts --limit=200 --min-price=50
  */
 import { getDb } from "../src/lib/db.server";
 import { getCard, getSet } from "../src/lib/queries.server";
 import { fetchPsaPrices, BlockedError } from "../src/lib/ebay/psa.server";
-import { isProxied } from "../src/lib/ebay/fetcher.server";
+import { isConfigured } from "../src/lib/ebay/browse.server";
 
 const arg = (name: string, fallback: number) =>
   Number(process.argv.find((a) => a.startsWith(`--${name}=`))?.split("=")[1] ?? fallback);
@@ -19,11 +19,10 @@ async function main() {
   const minPrice = arg("min-price", 25);
   const db = getDb();
 
-  console.log(
-    isProxied()
-      ? "Routing eBay requests through PPT_SCRAPER_URL."
-      : "No PPT_SCRAPER_URL set — requesting eBay directly. This is blocked from most servers.",
-  );
+  if (!isConfigured()) {
+    console.error("Set EBAY_CLIENT_ID and EBAY_CLIENT_SECRET (an eBay developer app's production keys).");
+    process.exit(1);
+  }
 
   const targets = db
     .prepare(
@@ -78,8 +77,7 @@ async function main() {
       if (++consecutiveBlocks >= 3) {
         console.error(
           "\neBay refused three requests in a row. Stopping.\n" +
-            "Set PPT_SCRAPER_URL to a proxy template, e.g.\n" +
-            "  PPT_SCRAPER_URL='https://api.scraperapi.com?api_key=KEY&url={url}'",
+            "Check the keys, or wait for the daily call limit to reset.",
         );
         break;
       }

@@ -81,10 +81,10 @@ export default function AboutPage({ loaderData }: Route.ComponentProps) {
             {ingested ? ` (last run ${new Date(ingested).toLocaleString()})` : ""}.
           </p>
           <p>
-            <strong className="text-ink-100">PSA graded prices</strong> are scraped from eBay sold
-            listings on demand, per card, and cached for a week. eBay blocks automated traffic from
-            most servers, so this needs a residential connection or a proxy configured through{" "}
-            <code className="rounded bg-ink-850 px-1 py-0.5 text-[11px]">PPT_SCRAPER_URL</code>.
+            <strong className="text-ink-100">PSA graded prices</strong> come from eBay&rsquo;s
+            official Browse API, looked up per card and cached for a week. They are the asking prices
+            of current listings (the median and range per grade), not past sales; each card links to
+            eBay&rsquo;s sold listings for those.
           </p>
           <p>
             <strong className="text-ink-100">Pull rates</strong> have no API anywhere. Every figure

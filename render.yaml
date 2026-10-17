@@ -14,8 +14,10 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
-      # Optional: route eBay requests through a proxy so PSA comps work.
-      # - key: PPT_SCRAPER_URL
+      # Optional: eBay developer keys so PSA graded prices work (Browse API).
+      # - key: EBAY_CLIENT_ID
+      #   sync: false
+      # - key: EBAY_CLIENT_SECRET
       #   sync: false
       # Optional: affiliate tags on outbound shop links (off when unset).
       # - key: TCGPLAYER_AFFILIATE_URL   # e.g. https://tcgplayer.pxf.io/c/1234567/1830156/21018

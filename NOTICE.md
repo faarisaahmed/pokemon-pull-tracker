@@ -19,7 +19,7 @@ mine to license.
   reports. Every entry in `src/lib/pullrates/data.ts` carries its source URL. The compilation is
   original work and is covered by the MIT licence; the underlying figures belong to whoever measured
   them and are credited in the app and in the source.
-- **Graded sale prices** are read from public eBay listings at request time and are not stored in
+- **Graded prices** are read from eBay's official Browse API at request time and are not stored in
   this repository.
 
 ## Not affiliated

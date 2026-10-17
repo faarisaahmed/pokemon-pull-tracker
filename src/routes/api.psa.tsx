@@ -2,9 +2,9 @@ import type { Route } from "./+types/api.psa";
 import { canWrite, getDb } from "@/lib/db.server";
 import { getCard, getSet, psaFetchStatus, psaPrices } from "@/lib/queries.server";
 import { BlockedError, fetchPsaPrices, searchUrl } from "@/lib/ebay/psa.server";
-import { isProxied } from "@/lib/ebay/fetcher.server";
+import { isConfigured } from "@/lib/ebay/browse.server";
 
-/** Graded comps move slowly; a week-old scrape is still useful. */
+/** Graded prices move slowly; a week-old lookup is still useful. */
 const TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export async function loader({ params }: Route.LoaderArgs) {
@@ -15,8 +15,19 @@ export async function loader({ params }: Route.LoaderArgs) {
   const set = getSet(card.setId);
   if (!set) return Response.json({ error: "Unknown set" }, { status: 404 });
 
+  if (!isConfigured()) {
+    return Response.json({
+      status: "unconfigured",
+      fetchedAt: new Date().toISOString(),
+      grades: [],
+      searchUrl: searchUrl(card, set),
+    });
+  }
+
   const log = psaFetchStatus(cardId);
-  const fresh = log && Date.now() - new Date(log.fetched_at).getTime() < TTL_MS;
+  // Only answers are cached; a failed lookup is retried on the next visit.
+  const fresh =
+    log && (log.status === "ok" || log.status === "empty") && Date.now() - new Date(log.fetched_at).getTime() < TTL_MS;
 
   if (fresh) {
     return Response.json({
@@ -55,7 +66,7 @@ export async function loader({ params }: Route.LoaderArgs) {
         cardId,
         now,
         summaries.length ? "ok" : "empty",
-        summaries.length ? null : `No graded sold listings matched (${sampled} listings scanned).`,
+        summaries.length ? null : `No PSA-graded listings matched (${sampled} listings scanned).`,
       );
     });
     replace();
@@ -80,9 +91,7 @@ export async function loader({ params }: Route.LoaderArgs) {
   } catch (err) {
     const blocked = err instanceof BlockedError;
     const note = blocked
-      ? isProxied()
-        ? "eBay blocked the request even through the configured proxy."
-        : "eBay blocks automated requests from this host. Set PPT_SCRAPER_URL to route through a proxy service."
+      ? "eBay's API refused the request: check EBAY_CLIENT_ID and EBAY_CLIENT_SECRET, or the daily call limit."
       : String(err instanceof Error ? err.message : err);
 
     if (persist) writeLog.run(cardId, now, blocked ? "blocked" : "error", note);

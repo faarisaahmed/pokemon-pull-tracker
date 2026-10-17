@@ -311,7 +311,7 @@ export default function CardPage({ loaderData }: Route.ComponentProps) {
             )}
           </Card>
 
-          <Card title="PSA graded sold prices">
+          <Card title="PSA graded prices">
             <PsaPanel cardId={card.id} rawPrice={card.marketPrice} />
           </Card>
 

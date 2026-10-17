@@ -13,7 +13,7 @@ interface Grade {
 }
 
 interface Payload {
-  status: "ok" | "empty" | "blocked" | "error";
+  status: "ok" | "empty" | "blocked" | "error" | "unconfigured";
   note?: string | null;
   fetchedAt: string;
   grades: Grade[];
@@ -46,7 +46,7 @@ export function PsaPanel({ cardId, rawPrice }: { cardId: string; rawPrice: numbe
         {[0, 1, 2].map((i) => (
           <div key={i} className="h-7 animate-pulse rounded bg-ink-850" />
         ))}
-        <p className="pt-1 text-[11px] text-ink-500">Checking eBay sold listings…</p>
+        <p className="pt-1 text-[11px] text-ink-500">Checking eBay listings…</p>
       </div>
     );
   }
@@ -59,11 +59,11 @@ export function PsaPanel({ cardId, rawPrice }: { cardId: string; rawPrice: numbe
     return (
       <div className="px-4 py-5 text-sm">
         <p className="text-ink-400">
-          {data.status === "blocked"
-            ? "No graded comps available — eBay refused the request."
-            : "No PSA-graded sold listings found for this card."}
+          {data.status === "empty"
+            ? "No PSA-graded copies are listed on eBay right now."
+            : "Graded prices aren't available right now."}
         </p>
-        {data.note ? <p className="mt-1.5 text-[11px] leading-relaxed text-ink-500">{data.note}</p> : null}
+        {data.note && data.status !== "blocked" && data.status !== "error" ? <p className="mt-1.5 text-[11px] leading-relaxed text-ink-500">{data.note}</p> : null}
         <a
           href={ebayLink(data.searchUrl, affiliate)}
           target="_blank"
@@ -82,9 +82,9 @@ export function PsaPanel({ cardId, rawPrice }: { cardId: string; rawPrice: numbe
         <thead>
           <tr className="border-b border-ink-800 text-left text-[10px] uppercase tracking-wider text-ink-400">
             <th className="px-4 py-2 font-medium">Grade</th>
-            <th className="px-4 py-2 text-right font-medium">Avg sold</th>
+            <th className="px-4 py-2 text-right font-medium">Typical</th>
             <th className="px-4 py-2 text-right font-medium">Range</th>
-            <th className="px-4 py-2 text-right font-medium">Sales</th>
+            <th className="px-4 py-2 text-right font-medium">Listed</th>
             <th className="px-4 py-2 text-right font-medium">vs raw</th>
           </tr>
         </thead>
@@ -109,11 +109,11 @@ export function PsaPanel({ cardId, rawPrice }: { cardId: string; rawPrice: numbe
       </table>
       <footer className="flex flex-wrap items-center gap-2 border-t border-ink-800 px-4 py-2 text-[11px] text-ink-500">
         <span>
-          From eBay sold listings{data.cached ? " (cached)" : ""} ·{" "}
+          Asking prices of current eBay listings{data.cached ? " (cached)" : ""} ·{" "}
           {new Date(data.fetchedAt).toLocaleDateString()}
         </span>
         <a href={ebayLink(data.searchUrl, affiliate)} target="_blank" rel="noreferrer" className="underline hover:text-accent">
-          view on eBay
+          see what's sold
         </a>
       </footer>
     </div>
