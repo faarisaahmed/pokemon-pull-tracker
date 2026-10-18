@@ -92,9 +92,9 @@ export default function AboutPage({ loaderData }: Route.ComponentProps) {
           </p>
           <p>
             <strong className="text-ink-100">PSA graded prices</strong> come from eBay&rsquo;s
-            official Browse API, looked up per card and cached for a week. They are the asking prices
+            official Browse API, looked up per card and kept for at most six hours. They are the asking prices
             of current listings (the median and range per grade), not past sales; each card links to
-            eBay&rsquo;s sold listings for those.
+            eBay&rsquo;s sold listings for those. Every price on Ripwise is an estimate, not financial advice.
           </p>
           <p>
             <strong className="text-ink-100">Pull rates</strong> have no API anywhere. Every figure
@@ -152,6 +152,17 @@ export default function AboutPage({ loaderData }: Route.ComponentProps) {
             Commons, uncommons and the rare slot have no published rate, so they are modelled from
             the pack&apos;s slot structure against the number of cards eligible for that slot. Those
             are always labelled <em className="text-ink-100">estimated</em>.
+          </p>
+        </div>
+      </Card>
+
+      <Card title="Privacy">
+        <div className="space-y-2 px-4 py-3 text-sm leading-relaxed text-ink-300">
+          <p>
+            Ripwise has no accounts, ads or analytics, and collects nothing about you. Your palette and
+            what&rsquo;s-new status are remembered in your own browser only. Buy links to TCGplayer and eBay
+            are affiliate links: once you click one, those sites may set their own cookies to credit Ripwise
+            with a commission, under their own privacy policies.
           </p>
         </div>
       </Card>

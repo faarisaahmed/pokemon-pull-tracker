@@ -323,6 +323,7 @@ export default function SetPage({ loaderData }: Route.ComponentProps) {
               No sealed product is currently listed for this set on TCGplayer.
             </p>
           ) : (
+            <>
             <ul className="max-h-80 divide-y divide-ink-850 overflow-y-auto">
               {sealed.map((s) => (
                 <li key={s.id} className="flex items-center gap-3 px-4 py-2">
@@ -339,7 +340,7 @@ export default function SetPage({ loaderData }: Route.ComponentProps) {
                     <a
                       href={shopLink(s.url, affiliate)}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noreferrer sponsored"
                       className="shrink-0 text-[10px] text-ink-500 underline hover:text-accent"
                     >
                       buy
@@ -348,6 +349,12 @@ export default function SetPage({ loaderData }: Route.ComponentProps) {
                 </li>
               ))}
             </ul>
+              {affiliate.tcgplayer || affiliate.ebay ? (
+                <p className="border-t border-ink-850 px-4 py-2 text-[10px] text-ink-500">
+                  Buy links are affiliate links: Ripwise may earn a commission.
+                </p>
+              ) : null}
+            </>
           )}
         </DetailsPanel>
       </div>

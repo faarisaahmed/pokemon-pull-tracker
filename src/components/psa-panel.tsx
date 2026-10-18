@@ -67,11 +67,12 @@ export function PsaPanel({ cardId, rawPrice }: { cardId: string; rawPrice: numbe
         <a
           href={ebayLink(data.searchUrl, affiliate)}
           target="_blank"
-          rel="noreferrer"
+          rel="noreferrer sponsored"
           className="mt-2.5 inline-block text-xs text-accent underline"
         >
           Search eBay sold listings yourself →
         </a>
+        {affiliate.ebay ? <span className="ml-1.5 text-[10px] text-ink-500">(affiliate link)</span> : null}
       </div>
     );
   }
@@ -109,11 +110,12 @@ export function PsaPanel({ cardId, rawPrice }: { cardId: string; rawPrice: numbe
       </table>
       <footer className="flex flex-wrap items-center gap-2 border-t border-ink-800 px-4 py-2 text-[11px] text-ink-500">
         <span>
-          Asking prices of current eBay listings{data.cached ? " (cached)" : ""} ·{" "}
-          {new Date(data.fetchedAt).toLocaleDateString()}
+          Asking prices of current eBay listings, checked{" "}
+          {new Date(data.fetchedAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}.
+          Estimates, not financial advice.
         </span>
-        <a href={ebayLink(data.searchUrl, affiliate)} target="_blank" rel="noreferrer" className="underline hover:text-accent">
-          see what's sold
+        <a href={ebayLink(data.searchUrl, affiliate)} target="_blank" rel="noreferrer sponsored" className="underline hover:text-accent">
+          see what's sold{affiliate.ebay ? " (affiliate link)" : ""}
         </a>
       </footer>
     </div>

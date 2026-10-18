@@ -129,6 +129,11 @@ export default function CardPage({ loaderData }: Route.ComponentProps) {
               Buy on TCGplayer{buyable.market != null ? ` from ${usd(buyable.market)}` : ""} ↗
             </a>
           ) : null}
+          {buyable && affiliate.tcgplayer ? (
+            <p className="-mt-1 text-center text-[10px] text-ink-500">
+              Affiliate link: Ripwise may earn a commission, at no extra cost to you.
+            </p>
+          ) : null}
           {shadowless && card.region !== "ko" ? (
             <a
               href={`${shadowless}/add?q=${encodeURIComponent(`${card.name} ${card.localId}`)}${card.region === "ja" ? "&region=ja" : ""}`}

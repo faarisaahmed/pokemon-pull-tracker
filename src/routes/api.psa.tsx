@@ -4,8 +4,13 @@ import { getCard, getSet, psaFetchStatus, psaPrices } from "@/lib/queries.server
 import { BlockedError, fetchPsaPrices, searchUrl } from "@/lib/ebay/psa.server";
 import { isConfigured } from "@/lib/ebay/browse.server";
 
-/** Graded prices move slowly; a week-old lookup is still useful. */
-const TTL_MS = 7 * 24 * 60 * 60 * 1000;
+/**
+ * eBay's API License Agreement (§8.1) lets displayed listing information be
+ * at most six hours older than eBay's own site, so nothing older is shown.
+ */
+const TTL_MS = 6 * 60 * 60 * 1000;
+
+const isFresh = (iso: string) => Date.now() - new Date(iso).getTime() < TTL_MS;
 
 export async function loader({ params }: Route.LoaderArgs) {
   const cardId = decodeURIComponent(params.cardId);
@@ -26,8 +31,7 @@ export async function loader({ params }: Route.LoaderArgs) {
 
   const log = psaFetchStatus(cardId);
   // Only answers are cached; a failed lookup is retried on the next visit.
-  const fresh =
-    log && (log.status === "ok" || log.status === "empty") && Date.now() - new Date(log.fetched_at).getTime() < TTL_MS;
+  const fresh = log && (log.status === "ok" || log.status === "empty") && isFresh(log.fetched_at);
 
   if (fresh) {
     return Response.json({
@@ -44,6 +48,11 @@ export async function loader({ params }: Route.LoaderArgs) {
   const now = new Date().toISOString();
   // Read-only deployments still fetch live, they just cannot cache the result.
   const persist = canWrite();
+  // The agreement also wants copies deleted once they are no longer needed.
+  if (persist) {
+    const cutoff = new Date(Date.now() - TTL_MS).toISOString();
+    db.prepare("DELETE FROM psa_prices WHERE fetched_at < ?").run(cutoff);
+  }
   const writeLog = db.prepare(
     `INSERT INTO psa_fetch_log (card_id, fetched_at, status, note) VALUES (?, ?, ?, ?)
      ON CONFLICT(card_id) DO UPDATE SET fetched_at=excluded.fetched_at, status=excluded.status, note=excluded.note`,
@@ -100,7 +109,7 @@ export async function loader({ params }: Route.LoaderArgs) {
         status: blocked ? "blocked" : "error",
         note,
         fetchedAt: now,
-        grades: psaPrices(cardId),
+        grades: psaPrices(cardId).filter((g) => isFresh(g.fetchedAt)),
         searchUrl: searchUrl(card, set),
       },
       { status: 200 },

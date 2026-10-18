@@ -86,7 +86,7 @@ npm run dev
 | Single + sealed market prices | TCGplayer via [TCGCSV](https://tcgcsv.com) | Category 3 (English) and 85 (Japanese). |
 | Korean sets | TCGdex's Korean set list, plus `KO_EXTRA` in `scripts/ingest/korean.ts` for newer sets | Korean sets are the Japanese ones card for card, so cards, images and pull rates come from the Japanese twin (`ko-<id>`). Pokémon names are translated with [PokeAPI](https://pokeapi.co)'s species names; trainers keep Japanese names. No prices. |
 | Simplified Chinese odds | Official per-product odds tables via the 52poke wiki | `src/lib/pullrates/zh.ts`, shown at `/china`. No open card lists exist, so there are no set pages. |
-| PSA graded prices | eBay Browse API (current listings) | Looked up on demand per card, cached for 7 days. |
+| PSA graded prices | eBay Browse API (current listings) | Looked up on demand per card, kept for at most 6 hours (eBay API License Agreement §8.1). |
 | Pull rates | Published opening studies + per-box tallies | Curated in `src/lib/pullrates/en.ts` and `ja.ts`, every entry carrying its source and sample size. |
 
 ### What is excluded
