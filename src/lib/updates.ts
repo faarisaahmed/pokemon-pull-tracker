@@ -15,6 +15,15 @@ export interface Update {
 
 export const UPDATES: Update[] = [
   {
+    date: "2026-10-17",
+    title: "PSA graded prices are back",
+    items: [
+      "Card pages show PSA prices again, from current eBay listings: the typical asking price per grade, plus the range. A link to eBay's sold listings is right there for checking what actually sold.",
+      "Grades now list from PSA 10 down.",
+    ],
+    link: { to: "/cards/base1-4", label: "See Base Set Charizard" },
+  },
+  {
     date: "2026-10-16",
     title: "Foil is the new default look",
     items: [

@@ -299,7 +299,7 @@ export function sealedForSet(setId: string): SealedRow[] {
 
 export function psaPrices(cardId: string): PsaPriceRow[] {
   return (getDb()
-    .prepare("SELECT * FROM psa_prices WHERE card_id = ? ORDER BY grade DESC")
+    .prepare("SELECT * FROM psa_prices WHERE card_id = ? ORDER BY CAST(grade AS REAL) DESC")
     .all(cardId) as Record<string, unknown>[]).map((r) => ({
     cardId: r.card_id as string,
     grade: r.grade as string,
